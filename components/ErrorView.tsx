@@ -2,16 +2,19 @@
 
 import React, { useState } from 'react';
 import { Button } from './ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
-import { AlertCircle, RefreshCcw, FileJson } from 'lucide-react';
+import { Card, CardContent } from './ui/card';
+import { AlertCircle, RefreshCcw, FileJson, FileUp, Type } from 'lucide-react';
 
 interface ErrorViewProps {
   error: Error | string;
   rawResponse?: string;
+  isExtractionError?: boolean;
   onRetry: () => void;
+  onTryAnotherFile?: () => void;
+  onPasteText?: () => void;
 }
 
-export function ErrorView({ error, rawResponse, onRetry }: ErrorViewProps) {
+export function ErrorView({ error, rawResponse, isExtractionError, onRetry, onTryAnotherFile, onPasteText }: ErrorViewProps) {
   const [showRaw, setShowRaw] = useState(false);
 
   return (
@@ -20,17 +23,23 @@ export function ErrorView({ error, rawResponse, onRetry }: ErrorViewProps) {
         <div className="inline-flex items-center justify-center p-4 bg-red-100 rounded-full mb-6">
           <AlertCircle className="w-10 h-10 text-red-600" />
         </div>
-        <h2 className="text-2xl font-semibold tracking-tight text-slate-900 mb-2">Analysis Failed</h2>
-        <p className="text-slate-500">We encountered an issue while validating your feature.</p>
+        <h2 className="text-2xl font-semibold tracking-tight text-slate-900 mb-2">
+          {isExtractionError ? "We couldn't extract readable text from this file." : "Analysis Failed"}
+        </h2>
+        <p className="text-slate-500">
+          {isExtractionError ? "Please try uploading a different file or paste the text directly." : "We encountered an issue while validating your feature."}
+        </p>
       </div>
 
       <Card className="w-full max-w-lg border-red-200 shadow-sm bg-red-50/50">
         <CardContent className="p-6 space-y-4">
-          <div className="p-4 bg-white rounded-md border border-red-100 text-sm text-red-800 font-mono break-words">
-            {error instanceof Error ? error.message : String(error)}
-          </div>
+          {!isExtractionError && (
+            <div className="p-4 bg-white rounded-md border border-red-100 text-sm text-red-800 font-mono break-words">
+              {error instanceof Error ? error.message : String(error)}
+            </div>
+          )}
 
-          {rawResponse && (
+          {rawResponse && !isExtractionError && (
             <div className="space-y-2">
               <Button 
                 variant="outline" 
@@ -55,10 +64,23 @@ export function ErrorView({ error, rawResponse, onRetry }: ErrorViewProps) {
           )}
 
           <div className="pt-4 flex gap-3">
-            <Button onClick={onRetry} className="flex-1" size="lg">
-              <RefreshCcw className="w-4 h-4 mr-2" />
-              Retry Analysis
-            </Button>
+            {isExtractionError ? (
+              <>
+                <Button onClick={onTryAnotherFile} className="flex-1" size="lg">
+                  <FileUp className="w-4 h-4 mr-2" />
+                  Try another file
+                </Button>
+                <Button onClick={onPasteText} variant="outline" className="flex-1" size="lg">
+                  <Type className="w-4 h-4 mr-2" />
+                  Paste text instead
+                </Button>
+              </>
+            ) : (
+              <Button onClick={onRetry} className="flex-1" size="lg">
+                <RefreshCcw className="w-4 h-4 mr-2" />
+                Retry Analysis
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>

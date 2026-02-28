@@ -4,18 +4,35 @@ import React, { useEffect, useState } from 'react';
 import { Card, CardContent } from './ui/card';
 import { Loader2, CheckCircle2 } from 'lucide-react';
 
-const stages = [
-  "Extracting assumptions...",
-  "Detecting risk scenarios...",
-  "Predicting UX failures...",
-  "Estimating rework probability...",
-  "Finalizing report..."
-];
+interface ProcessingViewProps {
+  isExtracting?: boolean;
+  hasFile?: boolean;
+}
 
-export function ProcessingView() {
+export function ProcessingView({ isExtracting = false, hasFile = false }: ProcessingViewProps) {
   const [currentStage, setCurrentStage] = useState(0);
 
+  const baseStages = [
+    "Extracting assumptions...",
+    "Detecting risk scenarios...",
+    "Predicting UX failures...",
+    "Estimating rework probability...",
+    "Finalizing report..."
+  ];
+
+  const stages = hasFile 
+    ? ["Extracting text from file...", ...baseStages] 
+    : baseStages;
+
   useEffect(() => {
+    if (hasFile && isExtracting) {
+      setCurrentStage(0);
+      return;
+    }
+    
+    const startIndex = hasFile ? 1 : 0;
+    setCurrentStage((prev) => Math.max(prev, startIndex));
+
     const interval = setInterval(() => {
       setCurrentStage((prev) => {
         if (prev < stages.length - 1) {
@@ -27,7 +44,7 @@ export function ProcessingView() {
     }, 2000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [isExtracting, hasFile, stages.length]);
 
   return (
     <div className="max-w-2xl mx-auto py-24 px-4 sm:px-6 lg:px-8 flex flex-col items-center justify-center min-h-[60vh]">
@@ -42,7 +59,6 @@ export function ProcessingView() {
           {stages.map((stage, index) => {
             const isCompleted = index < currentStage;
             const isCurrent = index === currentStage;
-            const isPending = index > currentStage;
 
             return (
               <div key={stage} className="flex items-center gap-3">

@@ -6,57 +6,66 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
-import { Upload, FileText, Image as ImageIcon, Sparkles, Loader2 } from 'lucide-react';
-import { extractContentFromImage, extractContentFromDocument } from '@/lib/gemini';
+import { Upload, FileText, Sparkles, X } from 'lucide-react';
 
 interface HomeViewProps {
-  onRunAnalysis: (data: { title: string; context: string; featureText: string }) => void;
+  onRunAnalysis: (data: { title: string; context: string; featureText: string; file: File | null }) => void;
+  initialData?: { title: string; context: string; featureText: string; file: File | null };
 }
 
-export function HomeView({ onRunAnalysis }: HomeViewProps) {
-  const [title, setTitle] = useState('');
-  const [context, setContext] = useState('');
-  const [featureText, setFeatureText] = useState('');
-  const [isExtracting, setIsExtracting] = useState(false);
+export function HomeView({ onRunAnalysis, initialData }: HomeViewProps) {
+  const [title, setTitle] = useState(initialData?.title || '');
+  const [context, setContext] = useState(initialData?.context || '');
+  const [featureText, setFeatureText] = useState(initialData?.featureText || '');
+  const [selectedFile, setSelectedFile] = useState<File | null>(initialData?.file || null);
+  const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setSelectedFile(file);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
 
-    setIsExtracting(true);
-    try {
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        const base64Data = (reader.result as string).split(',')[1];
-        const mimeType = file.type;
-        
-        let extractedText = '';
-        if (mimeType.startsWith('image/')) {
-          extractedText = await extractContentFromImage(base64Data, mimeType);
-        } else {
-          extractedText = await extractContentFromDocument(base64Data, mimeType);
-        }
-        
-        setFeatureText((prev) => prev ? prev + '\n\n' + extractedText : extractedText);
-      };
-      reader.readAsDataURL(file);
-    } catch (error) {
-      console.error("Extraction failed:", error);
-      alert("Failed to extract text from file. Please try pasting it manually.");
-    } finally {
-      setIsExtracting(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      const isValidType = file.type.startsWith('image/') || 
+                          file.type === 'application/pdf' || 
+                          file.type === 'text/plain' ||
+                          file.name.endsWith('.docx');
+      if (isValidType) {
+        setSelectedFile(file);
+      } else {
+        alert("Unsupported file type. Please upload an image, PDF, TXT, or DOCX file.");
+      }
     }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!featureText.trim()) {
-      alert("Please provide a feature description.");
+    if (!featureText.trim() && !selectedFile) {
+      alert("Please provide a feature description or upload a file.");
       return;
     }
-    onRunAnalysis({ title, context, featureText });
+    onRunAnalysis({ title, context, featureText, file: selectedFile });
   };
 
   return (
@@ -102,51 +111,86 @@ export function HomeView({ onRunAnalysis }: HomeViewProps) {
             </div>
 
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="featureText">Feature Description</Label>
-                <div className="flex items-center gap-2">
-                  <input 
-                    type="file" 
-                    ref={fileInputRef} 
-                    className="hidden" 
-                    accept="image/*,.pdf,.txt,.docx"
-                    onChange={handleFileUpload}
-                    suppressHydrationWarning
-                  />
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    size="sm" 
-                    className="h-8 text-xs"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={isExtracting}
-                    suppressHydrationWarning
-                  >
-                    {isExtracting ? (
-                      <Loader2 className="w-3 h-3 mr-2 animate-spin" />
-                    ) : (
-                      <Upload className="w-3 h-3 mr-2" />
-                    )}
-                    Upload File / Image
-                  </Button>
+              <Label htmlFor="featureText">Feature Description</Label>
+              
+              <div 
+                className={`relative group flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-xl transition-all duration-200 ease-in-out cursor-pointer ${
+                  isDragging 
+                    ? 'border-slate-400 bg-slate-50 scale-[1.01]' 
+                    : 'border-slate-200 hover:border-slate-300 bg-white'
+                }`}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  className="hidden" 
+                  accept="image/*,.pdf,.txt,.docx"
+                  onChange={handleFileUpload}
+                  suppressHydrationWarning
+                />
+                
+                <div className="flex flex-col items-center justify-center text-center space-y-4">
+                  <div className={`p-4 rounded-full transition-colors duration-200 ${isDragging ? 'bg-slate-200' : 'bg-slate-100 group-hover:bg-slate-200'}`}>
+                    <Upload className={`w-6 h-6 transition-colors duration-200 ${isDragging ? 'text-slate-700' : 'text-slate-500 group-hover:text-slate-700'}`} />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-slate-900">
+                      Drag and drop your file here, or{' '}
+                      <span className="text-blue-600 group-hover:text-blue-700 group-hover:underline">
+                        browse
+                      </span>
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      Supports PDF, DOCX, TXT, PNG, JPG
+                    </p>
+                  </div>
                 </div>
               </div>
-              <Textarea 
-                id="featureText" 
-                placeholder="Paste your feature description here, or upload a document/image to extract text..." 
-                className="min-h-[200px]"
-                value={featureText}
-                onChange={(e) => setFeatureText(e.target.value)}
-                required
-                suppressHydrationWarning
-              />
-              <p className="text-xs text-slate-500">
-                You can edit the extracted text before running the analysis.
-              </p>
+
+              {selectedFile && (
+                <div className="flex items-center justify-between p-4 border border-slate-200 rounded-md bg-white shadow-sm mt-4">
+                  <div className="flex items-center gap-3 overflow-hidden">
+                    <div className="p-2 bg-slate-50 rounded-md border border-slate-200 flex-shrink-0">
+                      <FileText className="w-5 h-5 text-slate-500" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-slate-900 truncate">{selectedFile.name}</p>
+                      <p className="text-xs text-slate-500">
+                        {(selectedFile.size / 1024).toFixed(1)} KB • Ready to analyze
+                      </p>
+                    </div>
+                  </div>
+                  <Button 
+                    type="button" 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={() => setSelectedFile(null)}
+                    className="flex-shrink-0 ml-2"
+                  >
+                    <X className="w-4 h-4 text-slate-500" />
+                  </Button>
+                </div>
+              )}
+              
+              <div className="pt-4">
+                <Textarea 
+                  id="featureText" 
+                  placeholder="Or paste your feature description here..." 
+                  className="min-h-[200px]"
+                  value={featureText}
+                  onChange={(e) => setFeatureText(e.target.value)}
+                  required={!selectedFile}
+                  suppressHydrationWarning
+                />
+              </div>
             </div>
           </CardContent>
           <CardFooter>
-            <Button type="submit" className="w-full" size="lg" disabled={isExtracting || !featureText.trim()} suppressHydrationWarning>
+            <Button type="submit" className="w-full" size="lg" disabled={!featureText.trim() && !selectedFile} suppressHydrationWarning>
               <Sparkles className="w-4 h-4 mr-2" />
               Run Analysis
             </Button>
