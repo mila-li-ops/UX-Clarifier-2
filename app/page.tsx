@@ -5,7 +5,6 @@ import { HomeView } from '@/components/HomeView';
 import { ProcessingView } from '@/components/ProcessingView';
 import { ResultsView } from '@/components/ResultsView';
 import { ErrorView } from '@/components/ErrorView';
-import { analyzeFeature, extractContentFromImage, extractContentFromDocument } from '@/lib/gemini';
 
 type AppState = 'HOME' | 'PROCESSING' | 'RESULTS' | 'ERROR';
 
@@ -44,11 +43,16 @@ export default function Page() {
 
           const mimeType = data.file.type;
           
-          if (mimeType.startsWith('image/')) {
-            finalFeatureText = await extractContentFromImage(base64Data, mimeType);
-          } else {
-            finalFeatureText = await extractContentFromDocument(base64Data, mimeType);
+          const extractRes = await fetch('/api/extract', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ base64Data, mimeType }),
+          });
+          if (!extractRes.ok) {
+            const { error } = await extractRes.json();
+            throw new Error(error || 'Extraction failed');
           }
+          finalFeatureText = (await extractRes.json()).text;
           
           if (!finalFeatureText || !finalFeatureText.trim()) {
             throw new Error("No text could be extracted.");
@@ -73,7 +77,18 @@ export default function Page() {
         finalFeatureText = extractedText;
       }
 
-      const result = await analyzeFeature(finalFeatureText, data.title, data.context, clarificationNotes);
+      const analyzeRes = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ featureText: finalFeatureText, title: data.title, context: data.context, clarificationNotes }),
+      });
+      if (!analyzeRes.ok) {
+        const { error, rawResponse } = await analyzeRes.json();
+        const err: any = new Error(error || 'Analysis failed');
+        err.rawResponse = rawResponse;
+        throw err;
+      }
+      const result = await analyzeRes.json();
       setAnalysisResult(result);
       setAppState('RESULTS');
     } catch (err: any) {
