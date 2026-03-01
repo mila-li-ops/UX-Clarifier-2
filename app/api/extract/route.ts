@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { extractContentFromImage, extractContentFromDocument } from "@/lib/gemini";
+import { extractContentFromImage, extractContentFromDocument } from "@/lib/openai";
 
 export async function POST(req: NextRequest) {
   const { base64Data, mimeType } = await req.json();

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { analyzeFeature } from "@/lib/gemini";
+import { analyzeFeature } from "@/lib/openai";
 
 export async function POST(req: NextRequest) {
   const { featureText, title, context, clarificationNotes } = await req.json();
