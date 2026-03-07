@@ -1,30 +1,158 @@
 "use client"
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Button } from './ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from './ui/card';
+import { Card, CardContent, CardFooter } from './ui/card';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
-import { Upload, FileText, Sparkles, X } from 'lucide-react';
+import { Upload, FileText, Sparkles, X, ChevronDown, Check } from 'lucide-react';
+
+export interface AnalysisData {
+  title: string;
+  featureComplexity: string;
+  productType: string;
+  platform: string;
+  targetUsers: string;
+  designStage: string;
+  focusArea: string[];
+  featureText: string;
+  files: File[];
+}
 
 interface HomeViewProps {
-  onRunAnalysis: (data: { title: string; context: string; featureText: string; file: File | null }) => void;
-  initialData?: { title: string; context: string; featureText: string; file: File | null };
+  onRunAnalysis: (data: AnalysisData) => void;
+  initialData?: AnalysisData;
+}
+
+function CustomSelect({ id, value, onChange, placeholder, options }: {
+  id: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  options: string[];
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        id={id}
+        onClick={() => setOpen(!open)}
+        className={`h-10 w-full flex items-center justify-between rounded-xl border bg-white px-3 pr-8 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2 ${open ? 'border-slate-950 ring-2 ring-slate-950 ring-offset-2' : 'border-slate-200'} ${value ? 'text-slate-900' : 'text-slate-400'}`}
+      >
+        {value || placeholder}
+      </button>
+      <ChevronDown className={`absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+      {open && (
+        <div className="absolute z-50 mt-1 w-full rounded-xl border border-slate-200 bg-white shadow-md py-1">
+          {options.map(option => (
+            <button
+              key={option}
+              type="button"
+              onClick={() => { onChange(option); setOpen(false); }}
+              className={`w-full text-left px-3 py-2 text-sm text-slate-900 hover:bg-slate-50 ${value === option ? 'bg-slate-50 font-medium' : ''}`}
+            >
+              {option}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MultiSelect({ id, value, onChange, placeholder, options }: {
+  id: string;
+  value: string[];
+  onChange: (value: string[]) => void;
+  placeholder: string;
+  options: string[];
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const toggle = (option: string) => {
+    onChange(value.includes(option) ? value.filter(v => v !== option) : [...value, option]);
+  };
+
+  const label = value.length === 0 ? placeholder : value.join(', ');
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        id={id}
+        onClick={() => setOpen(!open)}
+        className={`h-10 w-full flex items-center justify-between rounded-xl border bg-white px-3 pr-8 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2 ${open ? 'border-slate-950 ring-2 ring-slate-950 ring-offset-2' : 'border-slate-200'} ${value.length > 0 ? 'text-slate-900' : 'text-slate-400'}`}
+      >
+        <span className="truncate">{label}</span>
+      </button>
+      <ChevronDown className={`absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+      {open && (
+        <div className="absolute z-50 mt-1 w-full rounded-xl border border-slate-200 bg-white shadow-md py-1">
+          {options.map(option => (
+            <button
+              key={option}
+              type="button"
+              onClick={() => toggle(option)}
+              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-900 hover:bg-slate-50"
+            >
+              <span className={`w-4 h-4 flex-shrink-0 rounded border flex items-center justify-center ${value.includes(option) ? 'bg-slate-900 border-slate-900' : 'border-slate-300'}`}>
+                {value.includes(option) && <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />}
+              </span>
+              {option}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function HomeView({ onRunAnalysis, initialData }: HomeViewProps) {
   const [title, setTitle] = useState(initialData?.title || '');
-  const [context, setContext] = useState(initialData?.context || '');
+  const [featureComplexity, setFeatureComplexity] = useState(initialData?.featureComplexity || '');
+  const [productType, setProductType] = useState(initialData?.productType || '');
+  const [platform, setPlatform] = useState(initialData?.platform || '');
+  const [targetUsers, setTargetUsers] = useState(initialData?.targetUsers || '');
+  const [designStage, setDesignStage] = useState(initialData?.designStage || '');
+  const [focusArea, setFocusArea] = useState<string[]>(initialData?.focusArea || []);
   const [featureText, setFeatureText] = useState(initialData?.featureText || '');
-  const [selectedFile, setSelectedFile] = useState<File | null>(initialData?.file || null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>(initialData?.files || []);
   const [isDragging, setIsDragging] = useState(false);
+  const [optionalOpen, setOptionalOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const addFiles = (newFiles: File[]) => {
+    setSelectedFiles(prev => {
+      const existing = new Set(prev.map(f => f.name + f.size));
+      const toAdd = newFiles.filter(f => !existing.has(f.name + f.size));
+      return [...prev, ...toAdd];
+    });
+  };
+
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setSelectedFile(file);
+    const files = Array.from(e.target.files || []);
+    if (files.length) addFiles(files);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -44,155 +172,215 @@ export function HomeView({ onRunAnalysis, initialData }: HomeViewProps) {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
-    
-    const file = e.dataTransfer.files?.[0];
-    if (file) {
-      const isValidType = file.type.startsWith('image/') || 
-                          file.type === 'application/pdf' || 
-                          file.type === 'text/plain' ||
-                          file.name.endsWith('.docx');
-      if (isValidType) {
-        setSelectedFile(file);
-      } else {
-        alert("Unsupported file type. Please upload an image, PDF, TXT, or DOCX file.");
-      }
-    }
+
+    const files = Array.from(e.dataTransfer.files || []);
+    const valid = files.filter(f =>
+      f.type.startsWith('image/') ||
+      f.type === 'application/pdf' ||
+      f.type === 'text/plain' ||
+      f.name.endsWith('.docx')
+    );
+    const invalid = files.length - valid.length;
+    if (invalid > 0) alert(`${invalid} file(s) skipped. Please upload images, PDFs, TXT, or DOCX files.`);
+    if (valid.length) addFiles(valid);
+  };
+
+  const removeFile = (index: number) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!featureText.trim() && !selectedFile) {
+    if (!featureText.trim() && selectedFiles.length === 0) {
       alert("Please provide a feature description or upload a file.");
       return;
     }
-    onRunAnalysis({ title, context, featureText, file: selectedFile });
+    onRunAnalysis({ title, featureComplexity, productType, platform, targetUsers, designStage, focusArea, featureText, files: selectedFiles });
   };
 
   return (
-    <div className="max-w-3xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
-      <div className="mb-8 text-center">
-        <div className="inline-flex items-center justify-center p-3 bg-slate-100 rounded-2xl mb-4">
-          <Sparkles className="w-8 h-8 text-slate-900" />
+    <div className="w-full max-w-3xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+      <div className="mb-6 text-center">
+        <div className="flex items-center justify-center gap-4 mb-4">
+          <div className="inline-flex items-center justify-center p-2 bg-slate-100 rounded-xl">
+            <Sparkles className="w-6 h-6 text-slate-900" />
+          </div>
+          <h1 className="text-4xl font-bold tracking-tight text-slate-900">UX Clarifier</h1>
         </div>
-        <h1 className="text-4xl font-bold tracking-tight text-slate-900 mb-3">UX Clarifier</h1>
-        <p className="text-lg text-slate-600 max-w-xl mx-auto">
+        <p className="text-base text-slate-600 max-w-xl mx-auto">
           Validate feature clarity before starting design. Detect implicit assumptions, structural risks, and likely UX failures.
         </p>
       </div>
 
       <Card className="border-slate-200 shadow-sm">
         <form onSubmit={handleSubmit} suppressHydrationWarning>
-          <CardHeader>
-            <CardTitle>Feature Details</CardTitle>
-            <CardDescription>Provide the context and description of the feature you want to analyze.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="title">Feature Title (Optional)</Label>
-              <Input 
-                id="title" 
-                placeholder="e.g., User Onboarding Flow" 
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                suppressHydrationWarning
-              />
-            </div>
+          <CardContent className="space-y-3 pt-4">
 
-            <div className="space-y-2">
-              <Label htmlFor="context">Product Context (Optional)</Label>
-              <Textarea 
-                id="context" 
-                placeholder="Platform, target users, specific constraints..." 
-                className="min-h-[80px]"
-                value={context}
-                onChange={(e) => setContext(e.target.value)}
-                suppressHydrationWarning
-              />
-            </div>
+            {/* Step 1 */}
+            <div>
+              <span className="block text-base font-semibold text-slate-900 mb-2">Describe the feature you want to review</span>
 
-            <div className="space-y-2">
-              <Label htmlFor="featureText">Feature Description</Label>
-              
-              <div 
-                className={`relative group flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-xl transition-all duration-200 ease-in-out cursor-pointer ${
-                  isDragging 
-                    ? 'border-slate-400 bg-slate-50 scale-[1.01]' 
-                    : 'border-slate-200 hover:border-slate-300 bg-white'
+              <div
+                className={`relative rounded-xl border transition-all duration-200 bg-white ${
+                  isDragging ? 'border-slate-400 bg-slate-50' : 'border-slate-200'
                 }`}
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
-                onClick={() => fileInputRef.current?.click()}
               >
-                <input 
-                  type="file" 
-                  ref={fileInputRef} 
-                  className="hidden" 
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  className="hidden"
                   accept="image/*,.pdf,.txt,.docx"
+                  multiple
                   onChange={handleFileUpload}
                   suppressHydrationWarning
                 />
-                
-                <div className="flex flex-col items-center justify-center text-center space-y-4">
-                  <div className={`p-4 rounded-full transition-colors duration-200 ${isDragging ? 'bg-slate-200' : 'bg-slate-100 group-hover:bg-slate-200'}`}>
-                    <Upload className={`w-6 h-6 transition-colors duration-200 ${isDragging ? 'text-slate-700' : 'text-slate-500 group-hover:text-slate-700'}`} />
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium text-slate-900">
-                      Drag and drop your file here, or{' '}
-                      <span className="text-blue-600 group-hover:text-blue-700 group-hover:underline">
-                        browse
-                      </span>
-                    </p>
-                    <p className="text-xs text-slate-500">
-                      Supports PDF, DOCX, TXT, PNG, JPG
-                    </p>
-                  </div>
-                </div>
-              </div>
 
-              {selectedFile && (
-                <div className="flex items-center justify-between p-4 border border-slate-200 rounded-md bg-white shadow-sm mt-4">
-                  <div className="flex items-center gap-3 overflow-hidden">
-                    <div className="p-2 bg-slate-50 rounded-md border border-slate-200 flex-shrink-0">
-                      <FileText className="w-5 h-5 text-slate-500" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-slate-900 truncate">{selectedFile.name}</p>
-                      <p className="text-xs text-slate-500">
-                        {(selectedFile.size / 1024).toFixed(1)} KB • Ready to analyze
-                      </p>
-                    </div>
-                  </div>
-                  <Button 
-                    type="button" 
-                    variant="ghost" 
-                    size="icon" 
-                    onClick={() => setSelectedFile(null)}
-                    className="flex-shrink-0 ml-2"
+                {/* Upload row */}
+                <div className="flex flex-col gap-2 px-4 pt-3 pb-3 border-b border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-700 transition-colors self-start"
                   >
-                    <X className="w-4 h-4 text-slate-500" />
-                  </Button>
+                    <Upload className="w-4 h-4" />
+                    <span>Upload PRD / screenshot / flow</span>
+                  </button>
+
+                  {selectedFiles.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {selectedFiles.map((file, i) => (
+                        <div key={i} className="flex items-center gap-1.5 px-2 py-1 bg-slate-100 rounded-md">
+                          <FileText className="w-3.5 h-3.5 text-slate-500 flex-shrink-0" />
+                          <span className="text-xs text-slate-600 truncate max-w-[200px]">{file.name}</span>
+                          <button type="button" onClick={() => removeFile(i)} className="flex-shrink-0 ml-0.5">
+                            <X className="w-3 h-3 text-slate-400 hover:text-slate-600" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              )}
-              
-              <div className="pt-4">
-                <Textarea 
-                  id="featureText" 
-                  placeholder="Or paste your feature description here..." 
-                  className="min-h-[200px]"
+
+                {/* Textarea */}
+                <Textarea
+                  id="featureText"
+                  placeholder={`e.g., The goal of User Onboarding feature is to help new users connect to their first integration. The process looks like this: "Sign up → connect to Slack → invite a team."`}
+                  className="min-h-[140px] border-0 shadow-none rounded-none rounded-b-xl focus-visible:ring-0 focus-visible:ring-offset-0 resize-none placeholder:text-slate-400"
                   value={featureText}
                   onChange={(e) => setFeatureText(e.target.value)}
-                  required={!selectedFile}
+                  required={selectedFiles.length === 0}
                   suppressHydrationWarning
                 />
               </div>
             </div>
+
+            {/* Step 2 */}
+            <div>
+              <button
+                type="button"
+                onClick={() => setOptionalOpen(!optionalOpen)}
+                className="flex items-center gap-2 text-base font-semibold text-slate-900"
+              >
+                <ChevronDown className={`w-4 h-4 text-slate-500 transition-transform duration-200 ${optionalOpen ? '' : '-rotate-90'}`} />
+                Context for better analysis
+              </button>
+
+              {optionalOpen && (
+                <div className="mt-4 space-y-3">
+
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="title">Feature title</Label>
+                    <Input
+                      id="title"
+                      placeholder="e.g., User Onboarding Flow"
+                      className="rounded-xl placeholder:text-slate-400"
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                      suppressHydrationWarning
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="featureComplexity">Feature complexity</Label>
+                    <CustomSelect
+                      id="featureComplexity"
+                      value={featureComplexity}
+                      onChange={setFeatureComplexity}
+                      placeholder="Select complexity"
+                      options={['Simple interaction', 'Multi-step flow', 'System configuration', 'Data-heavy workflow']}
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="targetUsers">Target users</Label>
+                    <Input
+                      id="targetUsers"
+                      placeholder="e.g., Product managers in mid-size SaaS companies"
+                      className="rounded-xl placeholder:text-slate-400"
+                      value={targetUsers}
+                      onChange={(e) => setTargetUsers(e.target.value)}
+                      suppressHydrationWarning
+                    />
+                  </div>
+
+                  <div className="flex gap-3">
+                    <div className="flex flex-col gap-2 flex-1">
+                      <Label htmlFor="productType">Product type</Label>
+                      <CustomSelect
+                        id="productType"
+                        value={productType}
+                        onChange={setProductType}
+                        placeholder="Select product type"
+                        options={['B2B SaaS', 'B2C app', 'Marketplace', 'Mobile app', 'Internal tool', 'Developer tool']}
+                      />
+                    </div>
+                    <div className="flex flex-col gap-2 flex-1">
+                      <Label htmlFor="platform">Platform</Label>
+                      <CustomSelect
+                        id="platform"
+                        value={platform}
+                        onChange={setPlatform}
+                        placeholder="Select platform"
+                        options={['Web', 'Mobile', 'Web + Mobile', 'Desktop']}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3">
+                    <div className="flex flex-col gap-2 flex-1">
+                      <Label htmlFor="designStage">Design stage</Label>
+                      <CustomSelect
+                        id="designStage"
+                        value={designStage}
+                        onChange={setDesignStage}
+                        placeholder="Select stage"
+                        options={['Idea / early concept', 'User flow', 'Wireframes', 'High-fidelity design', 'Pre-handoff to development']}
+                      />
+                    </div>
+                    <div className="flex flex-col gap-2 flex-1">
+                      <Label htmlFor="focusArea">Focus analysis on</Label>
+                      <MultiSelect
+                        id="focusArea"
+                        value={focusArea}
+                        onChange={setFocusArea}
+                        placeholder="Select focus areas"
+                        options={['Edge cases', 'Missing states', 'User confusion risks', 'Accessibility issues', 'UX consistency', 'Error handling']}
+                      />
+                    </div>
+                  </div>
+
+                </div>
+              )}
+            </div>
+
           </CardContent>
           <CardFooter>
-            <Button type="submit" className="w-full" size="lg" disabled={!featureText.trim() && !selectedFile} suppressHydrationWarning>
+            <Button type="submit" className="w-full rounded-xl" size="lg" disabled={!featureText.trim() && selectedFiles.length === 0} suppressHydrationWarning>
               <Sparkles className="w-4 h-4 mr-2" />
-              Run Analysis
+              Analyze UX Risks
             </Button>
           </CardFooter>
         </form>

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent } from './ui/card';
-import { Loader2, CheckCircle2 } from 'lucide-react';
+import { Loader2, CheckCircle2, Sparkles } from 'lucide-react';
 
 interface ProcessingViewProps {
   isExtracting?: boolean;
@@ -49,7 +49,17 @@ export function ProcessingView({ isExtracting = false, hasFile = false }: Proces
   return (
     <div className="max-w-2xl mx-auto py-24 px-4 sm:px-6 lg:px-8 flex flex-col items-center justify-center min-h-[60vh]">
       <div className="text-center mb-8">
-        <Loader2 className="w-12 h-12 text-slate-900 animate-spin mx-auto mb-6" />
+        <div className="relative inline-flex items-center justify-center w-16 h-16 bg-slate-100 rounded-2xl mb-6">
+          <Sparkles className="w-8 h-8 text-slate-900" />
+          {/* Small animated star — top right */}
+          <svg style={{ animation: 'small-star-twinkle 3s ease-in-out infinite' }} className="absolute top-1.5 right-1.5 text-slate-500" width="8" height="8" viewBox="0 0 8 8" fill="currentColor">
+            <path d="M4 0 L4.6 3.4 L8 4 L4.6 4.6 L4 8 L3.4 4.6 L0 4 L3.4 3.4 Z" />
+          </svg>
+          {/* Small animated star — bottom left */}
+          <svg style={{ animation: 'small-star-twinkle 3s ease-in-out infinite 1.5s' }} className="absolute bottom-2 left-2 text-slate-400" width="5" height="5" viewBox="0 0 8 8" fill="currentColor">
+            <path d="M4 0 L4.6 3.4 L8 4 L4.6 4.6 L4 8 L3.4 4.6 L0 4 L3.4 3.4 Z" />
+          </svg>
+        </div>
         <h2 className="text-2xl font-semibold tracking-tight text-slate-900 mb-2">Analyzing Feature</h2>
         <p className="text-slate-500">Please wait while we validate your feature clarity.</p>
       </div>

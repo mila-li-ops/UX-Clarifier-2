@@ -108,8 +108,8 @@ const ExpandableCard = ({ item, categoryColor }: { item: any, categoryColor: str
   );
 };
 
-const Section = ({ title, icon: Icon, items, categoryColor, defaultExpanded = false, id }: any) => {
-  const [isExpanded, setIsExpanded] = useState(defaultExpanded);
+const Section = ({ title, icon: Icon, items, categoryColor, id }: any) => {
+  const [isExpanded, setIsExpanded] = useState(true);
   const [showAll, setShowAll] = useState(false);
 
   if (!items || items.length === 0) return null;
@@ -120,12 +120,15 @@ const Section = ({ title, icon: Icon, items, categoryColor, defaultExpanded = fa
     return (order[a.severity] ?? 3) - (order[b.severity] ?? 3);
   });
 
-  const highSeverityCount = sortedItems.filter(i => i.severity === 'High').length;
-  const displayItems = showAll ? sortedItems : sortedItems.filter(i => i.severity === 'High');
+  const highItems = sortedItems.filter(i => i.severity === 'High');
+  const hasHighItems = highItems.length > 0;
+  // If no High items, show all by default; otherwise show High until expanded
+  const displayItems = (!hasHighItems || showAll) ? sortedItems : highItems;
+  const hiddenCount = sortedItems.length - highItems.length;
 
   return (
     <div id={id} className="scroll-mt-24 mb-8">
-      <div 
+      <div
         className="flex items-center justify-between py-3 border-b border-slate-200 cursor-pointer group"
         onClick={() => setIsExpanded(!isExpanded)}
       >
@@ -143,23 +146,17 @@ const Section = ({ title, icon: Icon, items, categoryColor, defaultExpanded = fa
 
       {isExpanded && (
         <div className="pt-6 space-y-4">
-          {displayItems.length > 0 ? (
-            displayItems.map((item, idx) => (
-              <ExpandableCard key={idx} item={item} categoryColor={categoryColor} />
-            ))
-          ) : (
-            <div className="p-8 text-center border border-dashed border-slate-200 rounded-lg bg-slate-50">
-              <p className="text-slate-500 text-sm">No high severity items found in this category.</p>
-            </div>
-          )}
+          {displayItems.map((item: any, idx: number) => (
+            <ExpandableCard key={idx} item={item} categoryColor={categoryColor} />
+          ))}
 
-          {sortedItems.length > highSeverityCount && (
+          {hasHighItems && hiddenCount > 0 && (
             <div className="pt-2 text-center">
-              <button 
+              <button
                 onClick={() => setShowAll(!showAll)}
                 className="text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors"
               >
-                {showAll ? "Hide Medium & Low Severity" : `Show ${sortedItems.length - highSeverityCount} Medium & Low Severity Items`}
+                {showAll ? "Hide Medium & Low Severity" : `Show ${hiddenCount} Medium & Low Severity Items`}
               </button>
             </div>
           )}
@@ -234,21 +231,22 @@ export function ResultsView({ result, onRefine, onNewAnalysis, title }: ResultsV
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-24">
+    <div className="w-full min-h-screen bg-slate-50 pb-24">
       {/* Sticky Anchor Navigation & Summary Panel */}
       <div className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200 shadow-sm print:hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-14">
-            <div className="flex items-center gap-6">
-              <button 
+          {/* Main row: logo + desktop nav + scores */}
+          <div className="flex items-center justify-between h-14 gap-4">
+            <div className="flex items-center gap-4 min-w-0 flex-1">
+              <button
                 onClick={onNewAnalysis}
                 aria-label="Go to Home"
-                className="flex items-center gap-2 group focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 rounded"
+                className="flex items-center gap-2 group focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 rounded flex-shrink-0"
               >
                 <Sparkles className="w-4 h-4 text-slate-700 group-hover:text-slate-900 transition-colors" />
                 <span className="font-bold text-slate-700 group-hover:text-slate-900 transition-colors text-sm tracking-tight whitespace-nowrap">UX Clarifier</span>
               </button>
-              <div className="flex space-x-6 overflow-x-auto no-scrollbar border-l border-slate-200 pl-6">
+              <div className="hidden md:flex items-center space-x-5 border-l border-slate-200 pl-4 overflow-x-auto">
                 <button onClick={() => scrollTo('summary')} className="text-sm font-medium text-slate-600 hover:text-slate-900 whitespace-nowrap">Summary</button>
                 <button onClick={() => scrollTo('assumptions')} className="text-sm font-medium text-slate-600 hover:text-slate-900 whitespace-nowrap">Assumptions</button>
                 <button onClick={() => scrollTo('risks')} className="text-sm font-medium text-slate-600 hover:text-slate-900 whitespace-nowrap">Risk Scenarios</button>
@@ -256,7 +254,7 @@ export function ResultsView({ result, onRefine, onNewAnalysis, title }: ResultsV
                 <button onClick={() => scrollTo('actions')} className="text-sm font-medium text-slate-600 hover:text-slate-900 whitespace-nowrap">Next Actions</button>
               </div>
             </div>
-            <div className="flex items-center gap-6 hidden md:flex">
+            <div className="flex items-center gap-4 flex-shrink-0">
               <div className="flex flex-col items-end">
                 <span className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Ambiguity Score</span>
                 <span className={`text-sm font-bold ${ambiguityScore < 50 ? 'text-red-600' : ambiguityScore < 80 ? 'text-amber-600' : 'text-emerald-600'}`}>
@@ -270,6 +268,14 @@ export function ResultsView({ result, onRefine, onNewAnalysis, title }: ResultsV
                 </span>
               </div>
             </div>
+          </div>
+          {/* Mobile nav row */}
+          <div className="md:hidden flex items-center gap-4 overflow-x-auto pb-2 -mx-4 px-4">
+            <button onClick={() => scrollTo('summary')} className="text-sm font-medium text-slate-600 hover:text-slate-900 whitespace-nowrap">Summary</button>
+            <button onClick={() => scrollTo('assumptions')} className="text-sm font-medium text-slate-600 hover:text-slate-900 whitespace-nowrap">Assumptions</button>
+            <button onClick={() => scrollTo('risks')} className="text-sm font-medium text-slate-600 hover:text-slate-900 whitespace-nowrap">Risk Scenarios</button>
+            <button onClick={() => scrollTo('ux')} className="text-sm font-medium text-slate-600 hover:text-slate-900 whitespace-nowrap">UX Problems</button>
+            <button onClick={() => scrollTo('actions')} className="text-sm font-medium text-slate-600 hover:text-slate-900 whitespace-nowrap">Next Actions</button>
           </div>
         </div>
       </div>
@@ -303,8 +309,8 @@ export function ResultsView({ result, onRefine, onNewAnalysis, title }: ResultsV
               </div>
               <div className="space-y-3">
                 {topCriticalRisks.map((risk, idx) => (
-                  <div key={idx} className="flex items-start gap-3 bg-white p-3 rounded-lg border border-red-100 shadow-sm">
-                    <div className="mt-0.5"><SeverityBadge severity="High" /></div>
+                  <div key={idx} className="flex items-center gap-3 bg-white p-3 rounded-lg border border-red-100 shadow-sm">
+                    <SeverityBadge severity="High" />
                     <p className="text-sm text-slate-800 font-medium leading-snug">{risk.title}</p>
                   </div>
                 ))}
@@ -318,7 +324,7 @@ export function ResultsView({ result, onRefine, onNewAnalysis, title }: ResultsV
               <FileText className="w-5 h-5 text-slate-400" />
               Executive Summary
             </h2>
-            <p className="text-slate-700 leading-relaxed text-lg bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+            <p className="text-slate-700 leading-relaxed text-[18px] bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
               {result.executiveSummary}
             </p>
           </div>

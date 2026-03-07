@@ -50,14 +50,27 @@ export async function extractContentFromDocument(base64Data: string, mimeType: s
 export async function analyzeFeature(
   featureText: string,
   title: string,
-  context: string,
+  featureComplexity: string,
+  productType: string,
+  platform: string,
+  targetUsers: string,
+  designStage: string,
+  focusArea: string[],
   clarificationNotes?: string
 ) {
   let prompt = `Analyze the following feature description for UX clarity, implicit assumptions, structural risks, and likely UX failures.
 
 Feature Title: ${title || "Untitled Feature"}
-Product Context: ${context || "Not provided"}
 
+Feature Context:
+- Feature complexity: ${featureComplexity || "Not provided"}
+- Design stage: ${designStage || "Not provided"}
+
+Product Context:
+- Product type: ${productType || "Not provided"}
+- Platform: ${platform || "Not provided"}
+- Target users: ${targetUsers || "Not provided"}
+${focusArea && focusArea.length > 0 ? `\nFocus areas for this analysis: ${focusArea.join(', ')}` : ''}
 Feature Description:
 ${featureText}
 `;

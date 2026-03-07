@@ -2,14 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { analyzeFeature } from "@/lib/openai";
 
 export async function POST(req: NextRequest) {
-  const { featureText, title, context, clarificationNotes } = await req.json();
+  const { featureText, title, featureComplexity, productType, platform, targetUsers, designStage, focusArea, clarificationNotes } = await req.json();
 
   if (!featureText) {
     return NextResponse.json({ error: "Missing featureText" }, { status: 400 });
   }
 
   try {
-    const result = await analyzeFeature(featureText, title, context, clarificationNotes);
+    const result = await analyzeFeature(featureText, title, featureComplexity, productType, platform, targetUsers, designStage, focusArea, clarificationNotes);
     return NextResponse.json(result);
   } catch (err: any) {
     console.log(err)

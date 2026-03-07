@@ -1,25 +1,52 @@
 "use client"
 
 import React, { useState } from 'react';
-import { HomeView } from '@/components/HomeView';
+import { HomeView, AnalysisData } from '@/components/HomeView';
 import { ProcessingView } from '@/components/ProcessingView';
 import { ResultsView } from '@/components/ResultsView';
 import { ErrorView } from '@/components/ErrorView';
 
 type AppState = 'HOME' | 'PROCESSING' | 'RESULTS' | 'ERROR';
 
+const emptyData: AnalysisData = { title: '', featureComplexity: '', productType: '', platform: '', targetUsers: '', designStage: '', focusArea: [], featureText: '', files: [] };
+
 export default function Page() {
   const [appState, setAppState] = useState<AppState>('HOME');
-  const [featureData, setFeatureData] = useState<{ title: string; context: string; featureText: string; file: File | null }>({ title: '', context: '', featureText: '', file: null });
+  const [featureData, setFeatureData] = useState<AnalysisData>(emptyData);
   const [analysisResult, setAnalysisResult] = useState<any>(null);
   const [error, setError] = useState<Error | string | null>(null);
   const [rawResponse, setRawResponse] = useState<string | undefined>(undefined);
-  
+
   const [isExtracting, setIsExtracting] = useState(false);
   const [extractionError, setExtractionError] = useState(false);
   const [extractedText, setExtractedText] = useState<string>('');
 
-  const runAnalysis = async (data: { title: string; context: string; featureText: string; file: File | null }, clarificationNotes?: string) => {
+  const extractFile = async (file: File): Promise<string> => {
+    const base64Data = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const result = reader.result as string;
+        resolve(result.split(',')[1]);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+
+    const extractRes = await fetch('/api/extract', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ base64Data, mimeType: file.type }),
+    });
+    if (!extractRes.ok) {
+      const { error } = await extractRes.json();
+      throw new Error(error || 'Extraction failed');
+    }
+    const text = (await extractRes.json()).text;
+    if (!text || !text.trim()) throw new Error(`No text could be extracted from "${file.name}".`);
+    return text;
+  };
+
+  const runAnalysis = async (data: AnalysisData, clarificationNotes?: string) => {
     setAppState('PROCESSING');
     setError(null);
     setRawResponse(undefined);
@@ -28,42 +55,19 @@ export default function Page() {
     try {
       let finalFeatureText = data.featureText;
 
-      if (data.file && !clarificationNotes) {
+      if (data.files.length > 0 && !clarificationNotes) {
         setIsExtracting(true);
         try {
-          const base64Data = await new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-              const result = reader.result as string;
-              resolve(result.split(',')[1]);
-            };
-            reader.onerror = reject;
-            reader.readAsDataURL(data.file!);
-          });
+          const parts: string[] = [];
+          if (data.featureText.trim()) parts.push(data.featureText);
 
-          const mimeType = data.file.type;
-          
-          const extractRes = await fetch('/api/extract', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ base64Data, mimeType }),
-          });
-          if (!extractRes.ok) {
-            const { error } = await extractRes.json();
-            throw new Error(error || 'Extraction failed');
+          for (const file of data.files) {
+            const text = await extractFile(file);
+            parts.push(`--- Extracted from: ${file.name} ---\n${text}`);
           }
-          finalFeatureText = (await extractRes.json()).text;
-          
-          if (!finalFeatureText || !finalFeatureText.trim()) {
-            throw new Error("No text could be extracted.");
-          }
-          
+
+          finalFeatureText = parts.join('\n\n');
           setExtractedText(finalFeatureText);
-          
-          // Combine extracted text with the manually entered feature text
-          if (data.featureText.trim()) {
-            finalFeatureText = `${data.featureText}\n\n--- Extracted from file ---\n${finalFeatureText}`;
-          }
         } catch (err) {
           console.error("Extraction failed:", err);
           setExtractionError(true);
@@ -80,7 +84,7 @@ export default function Page() {
       const analyzeRes = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ featureText: finalFeatureText, title: data.title, context: data.context, clarificationNotes }),
+        body: JSON.stringify({ featureText: finalFeatureText, title: data.title, featureComplexity: data.featureComplexity, productType: data.productType, platform: data.platform, targetUsers: data.targetUsers, designStage: data.designStage, focusArea: data.focusArea, clarificationNotes }),
       });
       if (!analyzeRes.ok) {
         const { error, rawResponse } = await analyzeRes.json();
@@ -104,7 +108,7 @@ export default function Page() {
     }
   };
 
-  const handleRunAnalysis = (data: { title: string; context: string; featureText: string; file: File | null }) => {
+  const handleRunAnalysis = (data: AnalysisData) => {
     setFeatureData(data);
     runAnalysis(data);
   };
@@ -124,45 +128,45 @@ export default function Page() {
   };
 
   const handleTryAnotherFile = () => {
-    setFeatureData({ ...featureData, file: null });
+    setFeatureData({ ...featureData, files: [] });
     setAppState('HOME');
   };
 
   const handlePasteText = () => {
-    setFeatureData({ ...featureData, file: null });
+    setFeatureData({ ...featureData, files: [] });
     setAppState('HOME');
   };
 
   const handleNewAnalysis = () => {
-    setFeatureData({ title: '', context: '', featureText: '', file: null });
+    setFeatureData(emptyData);
     setAnalysisResult(null);
     setExtractedText('');
     setAppState('HOME');
   };
 
   return (
-    <main className="min-h-screen bg-slate-50 font-sans text-slate-900 selection:bg-slate-200">
+    <main className="min-h-screen bg-slate-50 font-sans text-slate-900 selection:bg-slate-200 flex items-center justify-center">
       {appState === 'HOME' && (
-        <HomeView 
-          onRunAnalysis={handleRunAnalysis} 
+        <HomeView
+          onRunAnalysis={handleRunAnalysis}
           initialData={featureData}
         />
       )}
-      {appState === 'PROCESSING' && <ProcessingView isExtracting={isExtracting} hasFile={!!featureData?.file} />}
+      {appState === 'PROCESSING' && <ProcessingView isExtracting={isExtracting} hasFile={featureData?.files.length > 0} />}
       {appState === 'RESULTS' && (
-        <ResultsView 
-          result={analysisResult} 
-          onRefine={handleRefine} 
+        <ResultsView
+          result={analysisResult}
+          onRefine={handleRefine}
           onNewAnalysis={handleNewAnalysis}
           title={featureData?.title || 'Untitled Feature'}
         />
       )}
       {appState === 'ERROR' && (
-        <ErrorView 
-          error={error || "An unknown error occurred"} 
-          rawResponse={rawResponse} 
+        <ErrorView
+          error={error || "An unknown error occurred"}
+          rawResponse={rawResponse}
           isExtractionError={extractionError}
-          onRetry={handleRetry} 
+          onRetry={handleRetry}
           onTryAnotherFile={handleTryAnotherFile}
           onPasteText={handlePasteText}
         />
