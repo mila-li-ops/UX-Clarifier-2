@@ -58,7 +58,7 @@ const SeverityBadge = ({ severity }: { severity: string }) => {
 };
 
 const ExpandableCard = ({ item, categoryColor }: { item: any, categoryColor: string }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(item.severity === 'High');
 
   return (
     <div className={`border border-slate-200 rounded-lg overflow-hidden bg-white transition-all duration-200 hover:border-slate-300 ${isExpanded ? 'shadow-md' : 'shadow-sm'}`}>
@@ -108,8 +108,7 @@ const ExpandableCard = ({ item, categoryColor }: { item: any, categoryColor: str
   );
 };
 
-const Section = ({ title, icon: Icon, items, categoryColor, id }: any) => {
-  const [isExpanded, setIsExpanded] = useState(true);
+const Section = ({ title, items, categoryColor, id }: any) => {
   const [showAll, setShowAll] = useState(false);
 
   if (!items || items.length === 0) return null;
@@ -122,46 +121,34 @@ const Section = ({ title, icon: Icon, items, categoryColor, id }: any) => {
 
   const highItems = sortedItems.filter(i => i.severity === 'High');
   const hasHighItems = highItems.length > 0;
-  // If no High items, show all by default; otherwise show High until expanded
   const displayItems = (!hasHighItems || showAll) ? sortedItems : highItems;
   const hiddenCount = sortedItems.length - highItems.length;
 
   return (
     <div id={id} className="scroll-mt-24 mb-8">
-      <div
-        className="flex items-center justify-between py-3 border-b border-slate-200 cursor-pointer group"
-        onClick={() => setIsExpanded(!isExpanded)}
-      >
-        <div className="flex items-center gap-3">
-          <div className={`p-1.5 rounded-md ${categoryColor.replace('border-', 'bg-').replace('-500', '-100')} ${categoryColor.replace('border-', 'text-')}`}>
-            <Icon className="w-5 h-5" />
-          </div>
-          <h3 className="text-lg font-semibold text-slate-900 group-hover:text-blue-600 transition-colors">{title}</h3>
-          <span className="bg-slate-100 text-slate-600 py-0.5 px-2 rounded-full text-xs font-medium">
-            {items.length} items
-          </span>
-        </div>
-        {isExpanded ? <ChevronUp className="w-5 h-5 text-slate-400" /> : <ChevronDown className="w-5 h-5 text-slate-400" />}
+      <div className="flex items-center gap-3 pb-2 pt-1">
+        <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
+        <span className="bg-slate-100 text-slate-600 py-0.5 px-2 rounded-full text-xs font-medium">
+          {items.length} items
+        </span>
       </div>
 
-      {isExpanded && (
-        <div className="pt-6 space-y-4">
-          {displayItems.map((item: any, idx: number) => (
-            <ExpandableCard key={idx} item={item} categoryColor={categoryColor} />
-          ))}
+      <div className="space-y-4">
+        {displayItems.map((item: any, idx: number) => (
+          <ExpandableCard key={idx} item={item} categoryColor={categoryColor} />
+        ))}
 
-          {hasHighItems && hiddenCount > 0 && (
-            <div className="pt-2 text-center">
-              <button
-                onClick={() => setShowAll(!showAll)}
-                className="text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors"
-              >
-                {showAll ? "Hide Medium & Low Severity" : `Show ${hiddenCount} Medium & Low Severity Items`}
-              </button>
-            </div>
-          )}
-        </div>
-      )}
+        {hasHighItems && hiddenCount > 0 && (
+          <div className="pt-2 text-center">
+            <button
+              onClick={() => setShowAll(!showAll)}
+              className="text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors"
+            >
+              {showAll ? "Hide Medium & Low Severity" : `Show ${hiddenCount} Medium & Low Severity Items`}
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
