@@ -252,13 +252,13 @@ export function ResultsView({ result, onRefine, onNewAnalysis, title }: ResultsV
             <p className="text-sm text-slate-500">Clarity Analysis • Generated {currentDate}</p>
           </div>
           <div className="flex items-center gap-3">
-            <Button variant="outline" onClick={handleExportPDF} size="sm">
-              <Download className="w-4 h-4 mr-2" />
-              Export
-            </Button>
-            <Button onClick={onNewAnalysis} size="sm">
+            <Button variant="outline" onClick={onNewAnalysis} size="sm">
               <PlusCircle className="w-4 h-4 mr-2" />
               New Analysis
+            </Button>
+            <Button onClick={handleExportPDF} size="sm">
+              <Download className="w-4 h-4 mr-2" />
+              Export
             </Button>
           </div>
         </div>
