@@ -143,50 +143,8 @@ export function ResultsView({ result, onRefine, onNewAnalysis, title }: ResultsV
     setCurrentDate(new Date().toLocaleString());
   }, []);
 
-  const handleExportPDF = async () => {
-    const html2pdfModule = await import('html2pdf.js');
-    const html2pdf = (html2pdfModule as any).default ?? html2pdfModule;
-    const element = document.querySelector('.print-container') as HTMLElement;
-    if (!element) return;
-
-    // html2canvas doesn't support oklch() (used by Tailwind v4).
-    // Copy browser-resolved RGB values from the live DOM into the cloned
-    // document so html2canvas can read plain rgb() instead of oklch().
-    const applyComputedColors = (clonedEl: HTMLElement, originalEl: HTMLElement) => {
-      const computed = window.getComputedStyle(originalEl);
-      const props = [
-        'color', 'background-color',
-        'border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color',
-      ];
-      props.forEach((prop) => {
-        const val = computed.getPropertyValue(prop);
-        if (val) clonedEl.style.setProperty(prop, val);
-      });
-      const origChildren = originalEl.children;
-      const clonedChildren = clonedEl.children;
-      for (let i = 0; i < origChildren.length; i++) {
-        if (clonedChildren[i]) {
-          applyComputedColors(clonedChildren[i] as HTMLElement, origChildren[i] as HTMLElement);
-        }
-      }
-    };
-
-    const opt = {
-      margin: [10, 10, 10, 10],
-      filename: `${title || 'ux-analysis'}.pdf`,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        onclone: (clonedDoc: Document) => {
-          const clonedEl = clonedDoc.querySelector('.print-container') as HTMLElement;
-          if (clonedEl) applyComputedColors(clonedEl, element);
-        },
-      },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-    };
-    html2pdf().set(opt).from(element).save();
+  const handleExportPDF = () => {
+    window.print();
   };
 
   const handleNotesChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
