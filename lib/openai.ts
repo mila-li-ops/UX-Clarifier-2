@@ -94,6 +94,15 @@ ${featureText}
               type: "string",
               description: "A short summary of the feature's clarity and overall risk level.",
             },
+            clarityLevel: {
+              type: "string",
+              description: "Overall clarity level of the feature description: Low, Moderate, or High.",
+            },
+            mainIssues: {
+              type: "array",
+              items: { type: "string" },
+              description: "Top 3 most critical issues or gaps found in the feature description.",
+            },
             implicitAssumptions: {
               type: "object",
               properties: {
@@ -135,7 +144,7 @@ ${featureText}
               items: { type: "string" },
             },
           },
-          required: ["executiveSummary", "implicitAssumptions", "systemRiskScenarios", "predictedUxProblems", "nextActions"],
+          required: ["executiveSummary", "clarityLevel", "mainIssues", "implicitAssumptions", "systemRiskScenarios", "predictedUxProblems", "nextActions"],
           additionalProperties: false,
         },
       },

@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
-import { Download, RefreshCw, PlusCircle, AlertTriangle, CheckCircle, Info, FileText, ChevronDown, ChevronUp, ShieldAlert, Target, Activity, Zap, Sparkles } from 'lucide-react';
+import { Download, RefreshCw, PlusCircle, AlertTriangle, CheckCircle, Info, ChevronDown, ChevronUp, ShieldAlert, Target, Activity, Zap, Sparkles } from 'lucide-react';
 import { Textarea } from './ui/textarea';
 import { Label } from './ui/label';
 
@@ -61,7 +61,7 @@ const ExpandableCard = ({ item, categoryColor }: { item: any, categoryColor: str
   const [isExpanded, setIsExpanded] = useState(item.severity === 'High');
 
   return (
-    <div className={`border border-slate-200 rounded-lg overflow-hidden bg-white transition-all duration-200 hover:border-slate-300 ${isExpanded ? 'shadow-md' : 'shadow-sm'}`}>
+    <div className={`border border-slate-200 rounded-xl overflow-hidden bg-white transition-all duration-200 hover:border-slate-300 ${isExpanded ? 'shadow-md' : 'shadow-sm'}`}>
       <div 
         className={`p-4 cursor-pointer flex items-start gap-4 border-l-4 ${categoryColor}`}
         onClick={() => setIsExpanded(!isExpanded)}
@@ -93,7 +93,7 @@ const ExpandableCard = ({ item, categoryColor }: { item: any, categoryColor: str
             </div>
           )}
           {item.clarificationQuestion && (
-            <div className="p-3 bg-blue-50/50 border border-blue-100 rounded text-blue-800">
+            <div className="p-3 bg-blue-50/50 border border-blue-100 rounded-xl text-blue-800">
               <span className="font-semibold block mb-0.5">Clarification Needed:</span>
               {item.clarificationQuestion}
             </div>
@@ -109,20 +109,12 @@ const ExpandableCard = ({ item, categoryColor }: { item: any, categoryColor: str
 };
 
 const Section = ({ title, items, categoryColor, id }: any) => {
-  const [showAll, setShowAll] = useState(false);
-
   if (!items || items.length === 0) return null;
 
-  // Sort: High -> Medium -> Low
   const sortedItems = [...items].sort((a, b) => {
     const order: Record<string, number> = { High: 0, Medium: 1, Low: 2 };
     return (order[a.severity] ?? 3) - (order[b.severity] ?? 3);
   });
-
-  const highItems = sortedItems.filter(i => i.severity === 'High');
-  const hasHighItems = highItems.length > 0;
-  const displayItems = (!hasHighItems || showAll) ? sortedItems : highItems;
-  const hiddenCount = sortedItems.length - highItems.length;
 
   return (
     <div id={id} className="scroll-mt-24 mb-8">
@@ -134,20 +126,9 @@ const Section = ({ title, items, categoryColor, id }: any) => {
       </div>
 
       <div className="space-y-4">
-        {displayItems.map((item: any, idx: number) => (
+        {sortedItems.map((item: any, idx: number) => (
           <ExpandableCard key={idx} item={item} categoryColor={categoryColor} />
         ))}
-
-        {hasHighItems && hiddenCount > 0 && (
-          <div className="pt-2 text-center">
-            <button
-              onClick={() => setShowAll(!showAll)}
-              className="text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors"
-            >
-              {showAll ? "Hide Medium & Low Severity" : `Show ${hiddenCount} Medium & Low Severity Items`}
-            </button>
-          </div>
-        )}
       </div>
     </div>
   );
@@ -162,7 +143,51 @@ export function ResultsView({ result, onRefine, onNewAnalysis, title }: ResultsV
     setCurrentDate(new Date().toLocaleString());
   }, []);
 
-  const handleExportPDF = () => window.print();
+  const handleExportPDF = async () => {
+    const html2pdfModule = await import('html2pdf.js');
+    const html2pdf = (html2pdfModule as any).default ?? html2pdfModule;
+    const element = document.querySelector('.print-container') as HTMLElement;
+    if (!element) return;
+
+    // html2canvas doesn't support oklch() (used by Tailwind v4).
+    // Copy browser-resolved RGB values from the live DOM into the cloned
+    // document so html2canvas can read plain rgb() instead of oklch().
+    const applyComputedColors = (clonedEl: HTMLElement, originalEl: HTMLElement) => {
+      const computed = window.getComputedStyle(originalEl);
+      const props = [
+        'color', 'background-color',
+        'border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color',
+      ];
+      props.forEach((prop) => {
+        const val = computed.getPropertyValue(prop);
+        if (val) clonedEl.style.setProperty(prop, val);
+      });
+      const origChildren = originalEl.children;
+      const clonedChildren = clonedEl.children;
+      for (let i = 0; i < origChildren.length; i++) {
+        if (clonedChildren[i]) {
+          applyComputedColors(clonedChildren[i] as HTMLElement, origChildren[i] as HTMLElement);
+        }
+      }
+    };
+
+    const opt = {
+      margin: [10, 10, 10, 10],
+      filename: `${title || 'ux-analysis'}.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        onclone: (clonedDoc: Document) => {
+          const clonedEl = clonedDoc.querySelector('.print-container') as HTMLElement;
+          if (clonedEl) applyComputedColors(clonedEl, element);
+        },
+      },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+    };
+    html2pdf().set(opt).from(element).save();
+  };
 
   const handleNotesChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setClarificationNotes(e.target.value);
@@ -248,12 +273,6 @@ export function ResultsView({ result, onRefine, onNewAnalysis, title }: ResultsV
                   {ambiguityScore}/100
                 </span>
               </div>
-              <div className="flex flex-col items-end">
-                <span className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Rework Prob.</span>
-                <span className={`text-sm font-bold ${reworkProb > 50 ? 'text-red-600' : reworkProb > 20 ? 'text-amber-600' : 'text-emerald-600'}`}>
-                  {reworkProb}%
-                </span>
-              </div>
             </div>
           </div>
           {/* Mobile nav row */}
@@ -287,6 +306,49 @@ export function ResultsView({ result, onRefine, onNewAnalysis, title }: ResultsV
         </div>
 
         <div className="print-container">
+          {/* Result Status Card */}
+          <div className={`mb-10 bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden border-t-2 ${
+            result.clarityLevel === 'Low' ? 'border-t-red-500' :
+            result.clarityLevel === 'High' ? 'border-t-emerald-500' : 'border-t-amber-500'
+          }`}>
+            <div className="px-6 pt-6 pb-5">
+              {/* Zone 1: Risk status */}
+              <p className="text-[10px] text-slate-400 uppercase tracking-widest font-semibold mb-3">Analysis Result</p>
+              <h2 className={`text-2xl font-bold tracking-tight mb-5 ${
+                result.clarityLevel === 'Low' ? 'text-red-700' :
+                result.clarityLevel === 'High' ? 'text-emerald-700' : 'text-amber-700'
+              }`}>
+                {result.clarityLevel || (ambiguityScore < 50 ? 'Low' : ambiguityScore < 80 ? 'Moderate' : 'High')} clarity risk
+              </h2>
+
+              {/* Zone 2: Metrics */}
+              <div className="flex gap-8 mb-5">
+                <div>
+                  <p className="text-[10px] text-slate-400 uppercase tracking-widest font-medium mb-1">Ambiguity Score</p>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-2xl font-bold text-slate-900">{ambiguityScore}</span>
+                    <span className="text-sm text-slate-400">/ 100</span>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-[10px] text-slate-400 uppercase tracking-widest font-medium mb-1">Rework Probability</p>
+                  <div className="flex items-baseline gap-0.5">
+                    <span className={`text-2xl font-bold ${reworkProb > 50 ? 'text-red-600' : reworkProb > 20 ? 'text-amber-600' : 'text-emerald-600'}`}>{reworkProb}</span>
+                    <span className="text-sm text-slate-400">%</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Zone 3: Main issue */}
+              {result.mainIssues?.[0] && (
+                <div>
+                  <p className="text-[10px] text-slate-400 uppercase tracking-widest font-medium mb-1.5">Primary Concern</p>
+                  <p className="text-sm text-slate-600 leading-relaxed">{result.mainIssues[0]}</p>
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* Top Critical Risks Block */}
           {topCriticalRisks.length > 0 && (
             <div className="mb-10 bg-red-50/50 border border-red-100 rounded-xl p-6">
@@ -296,7 +358,7 @@ export function ResultsView({ result, onRefine, onNewAnalysis, title }: ResultsV
               </div>
               <div className="space-y-3">
                 {topCriticalRisks.map((risk, idx) => (
-                  <div key={idx} className="flex items-center gap-3 bg-white p-3 rounded-lg border border-red-100 shadow-sm">
+                  <div key={idx} className="flex items-center gap-3 bg-white p-3 rounded-xl border border-red-100 shadow-sm">
                     <SeverityBadge severity="High" />
                     <p className="text-sm text-slate-800 font-medium leading-snug">{risk.title}</p>
                   </div>
@@ -305,20 +367,10 @@ export function ResultsView({ result, onRefine, onNewAnalysis, title }: ResultsV
             </div>
           )}
 
-          {/* Executive Summary */}
-          <div id="summary" className="scroll-mt-24 mb-12">
-            <h2 className="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
-              <FileText className="w-5 h-5 text-slate-400" />
-              Executive Summary
-            </h2>
-            <p className="text-slate-700 leading-relaxed text-[18px] bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-              {result.executiveSummary}
-            </p>
-          </div>
 
           {/* Implicit Assumptions */}
           <div id="assumptions" className="scroll-mt-24 mb-12">
-            <h2 className="text-2xl font-bold text-slate-900 mb-6 border-b border-slate-200 pb-2">Implicit Assumptions</h2>
+            <h2 className="text-2xl font-bold text-slate-900 mb-6 pb-3 border-b border-slate-200">Implicit Assumptions</h2>
             <Section title="Behavioral Assumptions" icon={Info} items={behavioralAssumptions} categoryColor="border-blue-500" defaultExpanded={true} />
             <Section title="Technical Assumptions" icon={Info} items={technicalAssumptions} categoryColor="border-indigo-500" />
             <Section title="Business Assumptions" icon={Info} items={businessAssumptions} categoryColor="border-violet-500" />
@@ -327,7 +379,7 @@ export function ResultsView({ result, onRefine, onNewAnalysis, title }: ResultsV
 
           {/* System Risk Scenarios */}
           <div id="risks" className="scroll-mt-24 mb-12">
-            <h2 className="text-2xl font-bold text-slate-900 mb-6 border-b border-slate-200 pb-2">System Risk Scenarios</h2>
+            <h2 className="text-2xl font-bold text-slate-900 mb-6 pb-3 border-b border-slate-200">System Risk Scenarios</h2>
             <Section title="Failure States" icon={AlertTriangle} items={failureStates} categoryColor="border-amber-500" defaultExpanded={true} />
             <Section title="Permission Conflicts" icon={AlertTriangle} items={permissionConflicts} categoryColor="border-orange-500" />
             <Section title="Empty Data Scenarios" icon={AlertTriangle} items={emptyDataScenarios} categoryColor="border-yellow-500" />
@@ -337,13 +389,13 @@ export function ResultsView({ result, onRefine, onNewAnalysis, title }: ResultsV
 
           {/* Predicted UX Problems */}
           <div id="ux" className="scroll-mt-24 mb-12">
-            <h2 className="text-2xl font-bold text-slate-900 mb-6 border-b border-slate-200 pb-2">Predicted UX Problems</h2>
+            <h2 className="text-2xl font-bold text-slate-900 mb-6 pb-3 border-b border-slate-200">Predicted UX Problems</h2>
             <Section title="Usability Friction" icon={Target} items={uxProblems} categoryColor="border-pink-500" defaultExpanded={true} />
           </div>
 
           {/* Next Actions */}
           <div id="actions" className="scroll-mt-24 mb-12">
-            <h2 className="text-2xl font-bold text-slate-900 mb-6 border-b border-slate-200 pb-2">Next Actions</h2>
+            <h2 className="text-2xl font-bold text-slate-900 mb-6 pb-3 border-b border-slate-200">Next Actions</h2>
             <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
               <div className="p-6">
                 <ul className="space-y-4">
@@ -360,7 +412,7 @@ export function ResultsView({ result, onRefine, onNewAnalysis, title }: ResultsV
         </div>
 
         {/* Refine Analysis Section */}
-        <div className="mt-16 pt-8 border-t border-slate-200 print:hidden bg-slate-100 -mx-4 sm:mx-0 p-6 rounded-xl">
+        <div className="mt-16 pt-8 border border-slate-200 print:hidden bg-slate-100 -mx-4 sm:mx-0 p-6 rounded-xl">
           <div className="flex items-center gap-2 mb-2">
             <Zap className="w-5 h-5 text-amber-500" />
             <h3 className="text-lg font-bold text-slate-900">Refine Analysis</h3>
