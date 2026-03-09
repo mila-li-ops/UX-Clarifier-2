@@ -90,6 +90,10 @@ ${featureText}
         schema: {
           type: "object",
           properties: {
+            suggestedTitle: {
+              type: "string",
+              description: "A concise feature title (3-6 words) inferred from the feature description. Used when the user did not provide one.",
+            },
             executiveSummary: {
               type: "string",
               description: "A short summary of the feature's clarity and overall risk level.",
@@ -144,7 +148,7 @@ ${featureText}
               items: { type: "string" },
             },
           },
-          required: ["executiveSummary", "clarityLevel", "mainIssues", "implicitAssumptions", "systemRiskScenarios", "predictedUxProblems", "nextActions"],
+          required: ["suggestedTitle", "executiveSummary", "clarityLevel", "mainIssues", "implicitAssumptions", "systemRiskScenarios", "predictedUxProblems", "nextActions"],
           additionalProperties: false,
         },
       },

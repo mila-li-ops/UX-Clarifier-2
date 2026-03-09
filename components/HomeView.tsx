@@ -6,7 +6,11 @@ import { Card, CardContent, CardFooter } from './ui/card';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
-import { Upload, FileText, Sparkles, X, ChevronDown, Check } from 'lucide-react';
+import { Upload, FileText, Sparkles, X, ChevronDown, Check, LogIn, LogOut, Clock, ChevronRight, Trash2, ExternalLink } from 'lucide-react';
+import { signInWithPopup, signOut } from 'firebase/auth';
+import { auth, googleProvider } from '@/lib/firebase';
+import { useAuth } from '@/components/AuthProvider';
+import { getAnalyses, deleteAnalysis, SavedAnalysis } from '@/lib/firestore';
 
 export interface AnalysisData {
   title: string;
@@ -23,6 +27,7 @@ export interface AnalysisData {
 interface HomeViewProps {
   onRunAnalysis: (data: AnalysisData) => void;
   initialData?: AnalysisData;
+  onOpenFromHistory?: (result: any, title: string) => void;
 }
 
 function CustomSelect({ id, value, onChange, placeholder, options }: {
@@ -128,7 +133,7 @@ function MultiSelect({ id, value, onChange, placeholder, options }: {
   );
 }
 
-export function HomeView({ onRunAnalysis, initialData }: HomeViewProps) {
+export function HomeView({ onRunAnalysis, initialData, onOpenFromHistory }: HomeViewProps) {
   const [title, setTitle] = useState(initialData?.title || '');
   const [featureComplexity, setFeatureComplexity] = useState(initialData?.featureComplexity || '');
   const [productType, setProductType] = useState(initialData?.productType || '');
@@ -385,6 +390,121 @@ export function HomeView({ onRunAnalysis, initialData }: HomeViewProps) {
           </CardFooter>
         </form>
       </Card>
+      <AuthFooter onOpenFromHistory={onOpenFromHistory} />
+    </div>
+  );
+}
+
+function AuthFooter({ onOpenFromHistory }: { onOpenFromHistory?: (result: any, title: string) => void }) {
+  const { user } = useAuth();
+  const [analyses, setAnalyses] = useState<SavedAnalysis[]>([]);
+  const [expanded, setExpanded] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    getAnalyses(user.uid).then(setAnalyses).catch(console.error);
+  }, [user]);
+
+  const handleSignIn = async () => {
+    try {
+      await signInWithPopup(auth, googleProvider);
+    } catch (err) {
+      console.error('Sign-in error:', err);
+    }
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await signOut(auth);
+    } catch (err) {
+      console.error('Sign-out error:', err);
+    }
+  };
+
+  return (
+    <div className="mt-4">
+      {user ? (
+        <>
+          <div className="flex items-center justify-between gap-4">
+            <div className="relative group/recent">
+              <button
+                onClick={analyses.length > 0 ? () => setExpanded((v) => !v) : undefined}
+                disabled={analyses.length === 0}
+                className={`inline-flex items-center gap-1 text-sm transition-colors ${analyses.length === 0 ? 'opacity-40 cursor-not-allowed' : ''}`}
+                style={{ color: 'oklch(0.208 0.042 265.755)' }}
+              >
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${expanded ? 'rotate-180' : ''}`} />
+                Recent analyses
+              </button>
+              {analyses.length === 0 && (
+                <span className="pointer-events-none absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-xs text-white opacity-0 group-hover/recent:opacity-100 transition-opacity">
+                  No recent analyses
+                </span>
+              )}
+            </div>
+            <button onClick={handleSignOut} className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-slate-600 transition-colors">
+              <LogOut className="w-3.5 h-3.5" />
+              Log out
+            </button>
+          </div>
+          {expanded && analyses.length > 0 && (
+            <div className="flex flex-col gap-1.5 mt-3">
+              {analyses.slice(0, 5).map((item) => (
+                <div
+                  key={item.id}
+                  className="w-full flex items-center justify-between bg-white border border-slate-200 rounded-xl px-4 py-3"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-slate-900 truncate">{item.title || 'Untitled Feature'}</p>
+                    <div className="flex items-center gap-1 mt-0.5">
+                      <Clock className="w-3 h-3 text-slate-400" />
+                      <p className="text-xs text-slate-400">{item.createdAt.toLocaleDateString()}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1 flex-shrink-0 ml-3">
+                    <div className="relative group/view">
+                      <button
+                        onClick={() => onOpenFromHistory?.(item.result, item.title)}
+                        className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                      </button>
+                      <span className="pointer-events-none absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-xs text-white opacity-0 group-hover/view:opacity-100 transition-opacity">
+                        View
+                      </span>
+                    </div>
+                    <div className="relative group/del">
+                      <button
+                        onClick={async () => {
+                          if (!user) return;
+                          await deleteAnalysis(user.uid, item.id);
+                          setAnalyses((prev) => prev.filter((a) => a.id !== item.id));
+                        }}
+                        className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                      <span className="pointer-events-none absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-xs text-white opacity-0 group-hover/del:opacity-100 transition-opacity">
+                        Delete
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="text-center">
+          <span className="text-sm text-slate-400">
+            Want to save your analysis history?{' '}
+            <button onClick={handleSignIn} className="inline-flex items-center gap-1 ml-1 text-slate-600 hover:text-slate-900 transition-colors">
+              <LogIn className="w-3.5 h-3.5" />
+              Log in with Google
+            </button>
+          </span>
+        </div>
+      )}
     </div>
   );
 }

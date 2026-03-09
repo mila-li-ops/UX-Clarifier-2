@@ -10,7 +10,8 @@ export async function POST(req: NextRequest) {
 
   try {
     const result = await analyzeFeature(featureText, title, featureComplexity, productType, platform, targetUsers, designStage, focusArea, clarificationNotes);
-    return NextResponse.json(result);
+    const resolvedTitle = title?.trim() || result.suggestedTitle || 'Untitled Feature';
+    return NextResponse.json({ ...result, resolvedTitle });
   } catch (err: any) {
     console.log(err)
     return NextResponse.json(

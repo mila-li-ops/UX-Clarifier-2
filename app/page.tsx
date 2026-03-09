@@ -5,12 +5,15 @@ import { HomeView, AnalysisData } from '@/components/HomeView';
 import { ProcessingView } from '@/components/ProcessingView';
 import { ResultsView } from '@/components/ResultsView';
 import { ErrorView } from '@/components/ErrorView';
+import { useAuth } from '@/components/AuthProvider';
+import { saveAnalysis } from '@/lib/firestore';
 
 type AppState = 'HOME' | 'PROCESSING' | 'RESULTS' | 'ERROR';
 
 const emptyData: AnalysisData = { title: '', featureComplexity: '', productType: '', platform: '', targetUsers: '', designStage: '', focusArea: [], featureText: '', files: [] };
 
 export default function Page() {
+  const { user } = useAuth();
   const [appState, setAppState] = useState<AppState>('HOME');
   const [featureData, setFeatureData] = useState<AnalysisData>(emptyData);
   const [analysisResult, setAnalysisResult] = useState<any>(null);
@@ -93,8 +96,14 @@ export default function Page() {
         throw err;
       }
       const result = await analyzeRes.json();
+      const resolvedTitle = result.resolvedTitle || data.title || 'Untitled Feature';
       setAnalysisResult(result);
+      setFeatureData({ ...data, title: resolvedTitle });
       setAppState('RESULTS');
+
+      if (user) {
+        saveAnalysis(user.uid, resolvedTitle, result).catch(console.error);
+      }
     } catch (err: any) {
       console.error("Analysis failed:", err);
       setError(err);
@@ -144,23 +153,35 @@ export default function Page() {
     setAppState('HOME');
   };
 
-  return (
-    <main className="min-h-screen bg-slate-50 font-sans text-slate-900 selection:bg-slate-200 flex items-center justify-center">
-      {appState === 'HOME' && (
-        <HomeView
-          onRunAnalysis={handleRunAnalysis}
-          initialData={featureData}
-        />
-      )}
-      {appState === 'PROCESSING' && <ProcessingView isExtracting={isExtracting} hasFile={featureData?.files.length > 0} />}
-      {appState === 'RESULTS' && (
+  const handleOpenFromHistory = (result: any, title: string) => {
+    setAnalysisResult(result);
+    setFeatureData({ ...emptyData, title });
+    setAppState('RESULTS');
+  };
+
+  if (appState === 'RESULTS') {
+    return (
+      <main className="min-h-screen bg-slate-50 font-sans text-slate-900 selection:bg-slate-200">
         <ResultsView
           result={analysisResult}
           onRefine={handleRefine}
           onNewAnalysis={handleNewAnalysis}
           title={featureData?.title || 'Untitled Feature'}
         />
+      </main>
+    );
+  }
+
+  return (
+    <main className="min-h-screen bg-slate-50 font-sans text-slate-900 selection:bg-slate-200 flex items-center justify-center">
+      {appState === 'HOME' && (
+        <HomeView
+          onRunAnalysis={handleRunAnalysis}
+          initialData={featureData}
+          onOpenFromHistory={handleOpenFromHistory}
+        />
       )}
+      {appState === 'PROCESSING' && <ProcessingView isExtracting={isExtracting} hasFile={featureData?.files.length > 0} />}
       {appState === 'ERROR' && (
         <ErrorView
           error={error || "An unknown error occurred"}
