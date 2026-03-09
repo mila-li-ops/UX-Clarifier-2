@@ -495,14 +495,12 @@ function AuthFooter({ onOpenFromHistory }: { onOpenFromHistory?: (result: any, t
           )}
         </>
       ) : (
-        <div className="text-center">
-          <span className="text-sm text-slate-400">
-            Want to save your analysis history?{' '}
-            <button onClick={handleSignIn} className="inline-flex items-center gap-1 ml-1 text-slate-600 hover:text-slate-900 transition-colors">
-              <LogIn className="w-3.5 h-3.5" />
-              Log in with Google
-            </button>
-          </span>
+        <div className="flex items-baseline justify-center gap-2">
+          <span className="text-sm text-slate-400">Want to save your analysis history?</span>
+          <button onClick={handleSignIn} className="inline-flex items-center gap-1 text-sm text-slate-600 hover:text-slate-900 transition-colors">
+            <LogIn className="w-3.5 h-3.5" />
+            Log in with Google
+          </button>
         </div>
       )}
     </div>
