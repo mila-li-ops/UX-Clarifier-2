@@ -56,6 +56,8 @@ interface ResultsViewProps {
   title: string;
 }
 
+const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+
 // Normalize items from the API — handles both the new rich object format and any legacy string format
 const normalizeItems = (items: any[] = []) => {
   return items.map((item) => {
@@ -88,11 +90,22 @@ const SeverityBadge = ({ severity }: { severity: string }) => {
   );
 };
 
-const ExpandableRow = ({ item, categoryColor, isLast }: { item: any, categoryColor: string, isLast: boolean }) => {
+const ExpandableRow = ({ item, categoryColor, isLast, activeId }: { item: any, categoryColor: string, isLast: boolean, activeId?: string | null }) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const rowRef = useRef<HTMLDivElement>(null);
+  const id = slugify(item.title || '');
+
+  useEffect(() => {
+    if (activeId && activeId === id) {
+      setIsExpanded(true);
+      setTimeout(() => rowRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
+    }
+  }, [activeId, id]);
+
+  const isHighlighted = activeId === id;
 
   return (
-    <div>
+    <div ref={rowRef} id={id} className={isHighlighted ? 'ring-2 ring-inset ring-blue-300 rounded' : ''}>
       <button
         type="button"
         aria-expanded={isExpanded}
@@ -147,7 +160,7 @@ const ExpandableRow = ({ item, categoryColor, isLast }: { item: any, categoryCol
   );
 };
 
-const Section = ({ title, items, categoryColor, id }: any) => {
+const Section = ({ title, items, categoryColor, id, activeId }: any) => {
   if (!items || items.length === 0) return null;
 
   const sortedItems = [...items].sort((a, b) => {
@@ -171,7 +184,7 @@ const Section = ({ title, items, categoryColor, id }: any) => {
           </span>
         </div>
         {sortedItems.map((item: any, idx: number) => (
-          <ExpandableRow key={idx} item={item} categoryColor={categoryColor} isLast={idx === sortedItems.length - 1} />
+          <ExpandableRow key={idx} item={item} categoryColor={categoryColor} isLast={idx === sortedItems.length - 1} activeId={activeId} />
         ))}
       </div>
     </div>
@@ -182,6 +195,13 @@ export function ResultsView({ result, onRefine, onNewAnalysis, title }: ResultsV
   const [clarificationNotes, setClarificationNotes] = useState('');
   const [isRefining, setIsRefining] = useState(false);
   const [currentDate, setCurrentDate] = useState<string>('');
+  const [activeRiskId, setActiveRiskId] = useState<string | null>(null);
+
+  const navigateToRisk = (linkedRisk: string) => {
+    const id = slugify(linkedRisk);
+    setActiveRiskId(id);
+    setTimeout(() => setActiveRiskId(null), 2500);
+  };
 
   useEffect(() => {
     setCurrentDate(new Date().toLocaleString());
@@ -384,41 +404,58 @@ export function ResultsView({ result, onRefine, onNewAnalysis, title }: ResultsV
           {/* Implicit Assumptions */}
           <div id="assumptions" className="scroll-mt-24 mb-12">
             <h2 className="text-2xl font-bold text-slate-900 mb-6 pb-3 border-b border-slate-200">Implicit Assumptions</h2>
-            <Section title="Behavioral Assumptions" items={behavioralAssumptions} categoryColor="border-blue-500" />
-            <Section title="Technical Assumptions" items={technicalAssumptions} categoryColor="border-blue-500" />
-            <Section title="UX Assumptions" items={uxAssumptions} categoryColor="border-blue-500" />
+            <Section title="Behavioral Assumptions" items={behavioralAssumptions} categoryColor="border-blue-500" activeId={activeRiskId} />
+            <Section title="Technical Assumptions" items={technicalAssumptions} categoryColor="border-blue-500" activeId={activeRiskId} />
+            <Section title="UX Assumptions" items={uxAssumptions} categoryColor="border-blue-500" activeId={activeRiskId} />
           </div>
 
           {/* System Risk Scenarios */}
           <div id="risks" className="scroll-mt-24 mb-12">
             <h2 className="text-2xl font-bold text-slate-900 mb-6 pb-3 border-b border-slate-200">System Risk Scenarios</h2>
-            <Section title="Failure States" items={failureStates} categoryColor="border-amber-500" />
-            <Section title="Permission Conflicts" items={permissionConflicts} categoryColor="border-amber-500" />
-            <Section title="Empty Data Scenarios" items={emptyDataScenarios} categoryColor="border-amber-500" />
-            <Section title="Concurrency Issues" items={concurrencyIssues} categoryColor="border-amber-500" />
-            <Section title="User Misuse Patterns" items={userMisusePatterns} categoryColor="border-amber-500" />
+            <Section title="Failure States" items={failureStates} categoryColor="border-amber-500" activeId={activeRiskId} />
+            <Section title="Permission Conflicts" items={permissionConflicts} categoryColor="border-amber-500" activeId={activeRiskId} />
+            <Section title="Empty Data Scenarios" items={emptyDataScenarios} categoryColor="border-amber-500" activeId={activeRiskId} />
+            <Section title="Concurrency Issues" items={concurrencyIssues} categoryColor="border-amber-500" activeId={activeRiskId} />
+            <Section title="User Misuse Patterns" items={userMisusePatterns} categoryColor="border-amber-500" activeId={activeRiskId} />
           </div>
 
           {/* Predicted UX Problems */}
           <div id="ux" className="scroll-mt-24 mb-12">
             <h2 className="text-2xl font-bold text-slate-900 mb-6 pb-3 border-b border-slate-200">Predicted UX Problems</h2>
-            <Section title="Usability Friction" items={uxProblems} categoryColor="border-pink-500" />
+            <Section title="Usability Friction" items={uxProblems} categoryColor="border-pink-500" activeId={activeRiskId} />
           </div>
 
           {/* Next Actions */}
           <div id="actions" className="scroll-mt-24 mb-12">
             <h2 className="text-2xl font-bold text-slate-900 mb-6 pb-3 border-b border-slate-200">Next Actions</h2>
-            <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-              <div className="p-6">
-                <ul className="space-y-4">
-                  {result.nextActions?.map((action: string, idx: number) => (
-                    <li key={idx} className="flex items-start gap-3">
-                      <CheckCircle className="w-5 h-5 text-emerald-500 flex-shrink-0 mt-0.5" aria-hidden="true" />
-                      <span className="text-slate-700">{action}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+            <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden border-l-4 border-l-emerald-200">
+              {result.nextActions?.map((item: any, idx: number) => {
+                const action = typeof item === 'string' ? item : item.action;
+                const linkedRisk = typeof item === 'object' ? item.linkedRisk : null;
+                return (
+                  <div key={idx} className="flex items-start gap-4 px-5 py-2.5">
+                    <div className="flex-shrink-0 w-6 h-6 rounded-full bg-emerald-50 border border-emerald-200 flex items-center justify-center mt-0.5">
+                      <span className="text-[10px] font-bold text-emerald-700">{idx + 1}</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-slate-800 leading-relaxed">{action}</p>
+                      {linkedRisk && (
+                        <p className="mt-1.5 text-xs text-slate-400 flex items-center gap-1.5">
+                          <span className="inline-block w-1 h-1 rounded-full bg-slate-300 flex-shrink-0" aria-hidden="true" />
+                          Addresses:{' '}
+                          <button
+                            type="button"
+                            onClick={() => navigateToRisk(linkedRisk)}
+                            className="text-blue-600 hover:text-blue-800 font-medium hover:underline focus:outline-none focus-visible:underline"
+                          >
+                            {linkedRisk}
+                          </button>
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>

@@ -235,8 +235,16 @@ ${featureText}`;
             },
             nextActions: {
               type: "array",
-              items: { type: "string" },
-              description: "Concrete, prioritized next steps. Each must name the action and who should do it.",
+              items: {
+                type: "object",
+                properties: {
+                  action: { type: "string", description: "Concrete next step — name the action and who should do it." },
+                  linkedRisk: { type: "string", description: "The exact title of the assumption, risk, or UX problem this action directly addresses. Must match one of the titles generated above." },
+                },
+                required: ["action", "linkedRisk"],
+                additionalProperties: false,
+              },
+              description: "Concrete, prioritized next steps. Each item must be tied to a specific risk, assumption, or UX problem from this analysis.",
             },
           },
           required: ["suggestedTitle", "executiveSummary", "clarityLevel", "mainIssues", "implicitAssumptions", "systemRiskScenarios", "predictedUxProblems", "nextActions"],
