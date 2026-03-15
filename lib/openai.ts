@@ -52,6 +52,7 @@ const ASSUMPTION_ITEM_SCHEMA = {
   properties: {
     title: { type: "string", description: "Short label for the assumption (max 10 words)" },
     description: { type: "string", description: "Full statement of the assumption as it applies to this specific feature" },
+    sourceQuote: { type: "string", description: "A short verbatim excerpt (max 25 words) from the user's feature description that this assumption is derived from. Quote the exact words if possible." },
     severity: { type: "string", description: "High, Medium, or Low — based on how badly the feature breaks if this assumption is wrong" },
     likelihood: { type: "string", description: "High, Medium, or Low — how likely this assumption is to be wrong in practice" },
     whyImplicit: { type: "string", description: "Why this assumption exists in this specific feature — reference the feature logic, not a generic statement" },
@@ -59,7 +60,7 @@ const ASSUMPTION_ITEM_SCHEMA = {
     clarificationQuestion: { type: "string", description: "A targeted question that suggests a specific validation method (user interview, usability test, analytics, prototype validation)" },
     detectionStage: { type: "string", description: "When this would realistically surface: Discovery, Design Review, Prototyping, Usability Testing, Development, or Post-Launch" },
   },
-  required: ["title", "description", "severity", "likelihood", "whyImplicit", "consequences", "clarificationQuestion", "detectionStage"],
+  required: ["title", "description", "sourceQuote", "severity", "likelihood", "whyImplicit", "consequences", "clarificationQuestion", "detectionStage"],
   additionalProperties: false,
 } as const;
 
@@ -68,6 +69,7 @@ const RISK_ITEM_SCHEMA = {
   properties: {
     title: { type: "string", description: "Short label for the risk scenario (max 10 words)" },
     description: { type: "string", description: "Full description of the risk as it applies to this feature" },
+    sourceQuote: { type: "string", description: "A short verbatim excerpt (max 25 words) from the user's feature description that exposes this risk. Quote the exact words if possible." },
     severity: { type: "string", description: "High, Medium, or Low" },
     likelihood: { type: "string", description: "High, Medium, or Low" },
     whyImplicit: { type: "string", description: "What part of the feature design creates or ignores this risk" },
@@ -75,7 +77,7 @@ const RISK_ITEM_SCHEMA = {
     clarificationQuestion: { type: "string", description: "A targeted question or design review check that would catch this risk before shipping" },
     detectionStage: { type: "string", description: "Discovery, Design Review, Prototyping, Usability Testing, Development, or Post-Launch" },
   },
-  required: ["title", "description", "severity", "likelihood", "whyImplicit", "consequences", "clarificationQuestion", "detectionStage"],
+  required: ["title", "description", "sourceQuote", "severity", "likelihood", "whyImplicit", "consequences", "clarificationQuestion", "detectionStage"],
   additionalProperties: false,
 } as const;
 
@@ -131,7 +133,12 @@ REASONING RULES — follow these exactly:
    - The consequence framing
    Each item should read like a distinct expert observation.
 
-7. OUTPUT VOLUME REQUIREMENTS. Always generate enough items to cover real risks — do not under-generate:
+7. SOURCE ANCHORING. For every item, populate the 'sourceQuote' field with a short verbatim excerpt from the user's feature description that directly triggered this insight. Rules:
+   - Quote the user's exact words (max 25 words), not your paraphrase
+   - If the insight comes from an absence or omission (something NOT stated), quote the closest related phrase and note the gap in 'whyImplicit'
+   - Never leave 'sourceQuote' generic — it must point to a specific sentence or phrase in the input
+
+8. OUTPUT VOLUME REQUIREMENTS. Always generate enough items to cover real risks — do not under-generate:
    - Implicit assumptions (behavioral, technical, ux): 2–4 items each if the feature has enough surface area
    - System risk scenarios (failureStates, emptyDataScenarios, userMisusePatterns): 2–3 items each
    - permissionConflicts and concurrencyIssues: 1–3 items if applicable, or 1 minimal item if truly not applicable
@@ -215,13 +222,14 @@ ${featureText}`;
                   problem: { type: "string" },
                   severity: { type: "string", description: "Low, Medium, or High" },
                   description: { type: "string", description: "Specific usability friction tied to this feature's interaction design" },
+                  sourceQuote: { type: "string", description: "A short verbatim excerpt (max 25 words) from the feature description that this UX problem is tied to." },
                   whyImplicit: { type: "string", description: "What design decision or omission creates this friction" },
                   consequences: { type: "string", description: "Measurable impact: abandonment, error rate, support tickets, etc." },
                   clarificationQuestion: { type: "string", description: "Specific usability test or design review question to validate" },
                   detectionStage: { type: "string" },
                   likelihood: { type: "string", description: "High, Medium, or Low" },
                 },
-                required: ["problem", "severity", "description", "whyImplicit", "consequences", "clarificationQuestion", "detectionStage", "likelihood"],
+                required: ["problem", "severity", "description", "sourceQuote", "whyImplicit", "consequences", "clarificationQuestion", "detectionStage", "likelihood"],
                 additionalProperties: false,
               },
             },

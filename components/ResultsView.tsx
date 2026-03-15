@@ -1,11 +1,53 @@
 "use client"
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import ReactDOM from 'react-dom';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
 import { Download, RefreshCw, PlusCircle, AlertTriangle, CheckCircle, Info, ChevronDown, ChevronUp, ShieldAlert, Target, Activity, Zap, Sparkles } from 'lucide-react';
 import { Textarea } from './ui/textarea';
 import { Label } from './ui/label';
+
+const Tooltip = ({ content, children, side = 'top' }: { content: string; children: React.ReactNode; side?: 'top' | 'bottom' }) => {
+  const [visible, setVisible] = useState(false);
+  const [coords, setCoords] = useState({ x: 0, y: 0 });
+  const ref = useRef<HTMLDivElement>(null);
+
+  const show = () => {
+    if (ref.current) {
+      const r = ref.current.getBoundingClientRect();
+      setCoords({ x: r.left + r.width / 2, y: side === 'top' ? r.top : r.bottom });
+    }
+    setVisible(true);
+  };
+
+  const tooltip = visible && typeof document !== 'undefined'
+    ? ReactDOM.createPortal(
+        <div
+          className="fixed z-[9999] w-64 bg-slate-900 text-white text-xs rounded-lg px-3 py-2.5 leading-relaxed shadow-xl pointer-events-none"
+          style={{
+            left: coords.x,
+            ...(side === 'top'
+              ? { top: coords.y - 8, transform: 'translateX(-50%) translateY(-100%)' }
+              : { top: coords.y + 8, transform: 'translateX(-50%)' }),
+          }}
+        >
+          {content}
+          <div
+            className={`absolute left-1/2 -translate-x-1/2 border-4 border-transparent ${side === 'top' ? 'top-full border-t-slate-900' : 'bottom-full border-b-slate-900'}`}
+          />
+        </div>,
+        document.body
+      )
+    : null;
+
+  return (
+    <div ref={ref} className="inline-flex items-center" onMouseEnter={show} onMouseLeave={() => setVisible(false)}>
+      {children}
+      {tooltip}
+    </div>
+  );
+};
 
 interface ResultsViewProps {
   result: any;
@@ -24,6 +66,12 @@ const normalizeItems = (items: any[] = []) => {
   });
 };
 
+const SEVERITY_TOOLTIPS: Record<string, string> = {
+  High: 'High severity — if this assumption is wrong or this risk materializes, the feature likely fails or causes a critical experience breakdown.',
+  Medium: 'Medium severity — this issue would degrade the experience or cause partial failures, but the feature remains usable.',
+  Low: 'Low severity — minor friction or an edge-case issue unlikely to block most users.',
+};
+
 const SeverityBadge = ({ severity }: { severity: string }) => {
   const colors = {
     High: 'bg-red-50 text-red-700 border-red-200',
@@ -32,9 +80,11 @@ const SeverityBadge = ({ severity }: { severity: string }) => {
   }[severity] || 'bg-slate-50 text-slate-700 border-slate-200';
 
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium border uppercase tracking-wider ${colors}`}>
-      {severity}
-    </span>
+    <Tooltip content={SEVERITY_TOOLTIPS[severity] || 'Indicates how badly the feature breaks if this issue is unresolved.'}>
+      <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium border uppercase tracking-wider cursor-default ${colors}`}>
+        {severity}
+      </span>
+    </Tooltip>
   );
 };
 
@@ -63,6 +113,12 @@ const ExpandableRow = ({ item, categoryColor, isLast }: { item: any, categoryCol
 
       {isExpanded && (
         <div className="px-4 py-3 bg-slate-50 text-sm space-y-3">
+          {item.sourceQuote && (
+            <div className="flex gap-2.5 p-2.5 bg-white border border-slate-200 rounded-lg">
+              <span className="text-slate-300 font-serif text-lg leading-none flex-shrink-0 mt-0.5">"</span>
+              <p className="text-xs text-slate-500 italic leading-relaxed">{item.sourceQuote}</p>
+            </div>
+          )}
           {item.whyImplicit && (
             <div>
               <span className="font-medium text-slate-900 block mb-0.5">Context / Why it matters:</span>
@@ -212,12 +268,17 @@ export function ResultsView({ result, onRefine, onNewAnalysis, title }: ResultsV
               </div>
             </div>
             <div className="flex items-center gap-4 flex-shrink-0">
-              <div className="flex flex-col items-end">
-                <span className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Ambiguity Score</span>
-                <span className={`text-sm font-bold ${ambiguityScore < 50 ? 'text-red-600' : ambiguityScore < 80 ? 'text-amber-600' : 'text-emerald-600'}`}>
-                  {ambiguityScore}/100
-                </span>
-              </div>
+              <Tooltip side="bottom" content="Measures how clearly the feature is defined (0–100). Derived from the total number of implicit assumptions and risks identified. Lower scores signal significant gaps that could cause misalignment between design, development, and user expectations.">
+                <div className="flex flex-col items-end cursor-default">
+                  <span className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold flex items-center gap-1">
+                    Ambiguity Score
+                    <Info className="w-3 h-3 text-slate-400" aria-hidden="true" />
+                  </span>
+                  <span className={`text-sm font-bold ${ambiguityScore < 50 ? 'text-red-600' : ambiguityScore < 80 ? 'text-amber-600' : 'text-emerald-600'}`}>
+                    {ambiguityScore}/100
+                  </span>
+                </div>
+              </Tooltip>
             </div>
           </div>
           {/* Mobile nav row */}
@@ -267,14 +328,24 @@ export function ResultsView({ result, onRefine, onNewAnalysis, title }: ResultsV
                 </h2>
                 <div className="flex gap-8 mb-5">
                   <div>
-                    <p className="text-[10px] text-slate-500 uppercase tracking-widest font-medium mb-1">Ambiguity Score</p>
+                    <Tooltip content="Measures how clearly the feature is defined (0–100). Derived from the total number of implicit assumptions and risks identified. Lower scores signal significant clarity gaps that could cause misalignment between design, development, and user expectations.">
+                      <p className="text-[10px] text-slate-500 uppercase tracking-widest font-medium mb-1 flex items-center gap-1 cursor-default">
+                        Ambiguity Score
+                        <Info className="w-3 h-3 text-slate-400" aria-hidden="true" />
+                      </p>
+                    </Tooltip>
                     <div className="flex items-baseline gap-1">
                       <span className="text-2xl font-bold text-slate-900">{ambiguityScore}</span>
                       <span className="text-sm text-slate-500">/ 100</span>
                     </div>
                   </div>
                   <div>
-                    <p className="text-[10px] text-slate-500 uppercase tracking-widest font-medium mb-1">Rework Probability</p>
+                    <Tooltip content="Estimated likelihood that this feature will require significant rework after development begins. Calculated from the number of high-severity issues found. Features with unresolved critical assumptions frequently re-enter design after engineering has started.">
+                      <p className="text-[10px] text-slate-500 uppercase tracking-widest font-medium mb-1 flex items-center gap-1 cursor-default">
+                        Rework Probability
+                        <Info className="w-3 h-3 text-slate-400" aria-hidden="true" />
+                      </p>
+                    </Tooltip>
                     <div className="flex items-baseline gap-0.5">
                       <span className={`text-2xl font-bold ${result.clarityLevel === 'Low' ? 'text-red-700' : result.clarityLevel === 'High' ? 'text-emerald-700' : 'text-amber-700'}`}>{reworkProb}</span>
                       <span className="text-sm text-slate-500">%</span>
