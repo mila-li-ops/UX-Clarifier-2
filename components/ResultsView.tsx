@@ -43,21 +43,23 @@ const ExpandableRow = ({ item, categoryColor, isLast }: { item: any, categoryCol
 
   return (
     <div>
-      <div
-        className="px-4 py-3 cursor-pointer flex items-start gap-3 hover:bg-slate-50 transition-colors"
+      <button
+        type="button"
+        aria-expanded={isExpanded}
         onClick={() => setIsExpanded(!isExpanded)}
+        className="w-full px-4 py-3 flex items-start gap-3 hover:bg-slate-50 transition-colors text-left"
       >
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-2">
             <h4 className="text-sm font-semibold text-slate-900">{item.title}</h4>
             <div className="flex items-center gap-2 flex-shrink-0">
               <SeverityBadge severity={item.severity} />
-              {isExpanded ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+              {isExpanded ? <ChevronUp className="w-4 h-4 text-slate-400" aria-hidden="true" /> : <ChevronDown className="w-4 h-4 text-slate-400" aria-hidden="true" />}
             </div>
           </div>
           {!isExpanded && <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">{item.description}</p>}
         </div>
-      </div>
+      </button>
 
       {isExpanded && (
         <div className="px-4 py-3 bg-slate-50 text-sm space-y-3">
@@ -105,10 +107,10 @@ const Section = ({ title, items, categoryColor, id }: any) => {
             const hasHigh = items.some((i: any) => i.severity === 'High');
             const hasMedium = items.some((i: any) => i.severity === 'Medium');
             const dotColor = hasHigh ? 'bg-red-700' : hasMedium ? 'bg-amber-500' : 'bg-emerald-700';
-            return <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${dotColor}`} />;
+            return <span aria-hidden="true" className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${dotColor}`} />;
           })()}
           <h3 className="text-base font-semibold text-slate-900">{title}</h3>
-          <span className="bg-slate-200 text-slate-600 py-0.5 px-2 rounded-full text-xs font-medium">
+          <span aria-label={`${items.length} items`} className="bg-slate-200 text-slate-600 py-0.5 px-2 rounded-full text-xs font-medium">
             {items.length}
           </span>
         </div>
@@ -199,7 +201,7 @@ export function ResultsView({ result, onRefine, onNewAnalysis, title }: ResultsV
                 aria-label="Go to Home"
                 className="flex items-center gap-2 group focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 rounded flex-shrink-0"
               >
-                <Sparkles className="w-4 h-4 text-slate-700 group-hover:text-slate-900 transition-colors" />
+                <Sparkles className="w-4 h-4 text-slate-700 group-hover:text-slate-900 transition-colors" aria-hidden="true" />
                 <span className="font-bold text-slate-700 group-hover:text-slate-900 transition-colors text-sm tracking-tight whitespace-nowrap">UX Clarifier</span>
               </button>
               <div className="hidden md:flex items-center space-x-5 border-l border-slate-200 pl-4 overflow-x-auto">
@@ -237,11 +239,11 @@ export function ResultsView({ result, onRefine, onNewAnalysis, title }: ResultsV
           </div>
           <div className="flex items-center gap-3">
             <Button variant="outline" onClick={onNewAnalysis} size="sm">
-              <PlusCircle className="w-4 h-4 mr-2" />
+              <PlusCircle className="w-4 h-4 mr-2" aria-hidden="true" />
               New Analysis
             </Button>
             <Button onClick={handleExportPDF} size="sm">
-              <Download className="w-4 h-4 mr-2" />
+              <Download className="w-4 h-4 mr-2" aria-hidden="true" />
               Export
             </Button>
           </div>
@@ -256,7 +258,7 @@ export function ResultsView({ result, onRefine, onNewAnalysis, title }: ResultsV
               result.clarityLevel === 'High' ? 'border-t-emerald-500' : 'border-t-amber-500'
             }`}>
               <div className="px-6 pt-6 pb-5">
-                <p className="text-[10px] text-slate-400 uppercase tracking-widest font-semibold mb-3">Analysis Result</p>
+                <p className="text-[10px] text-slate-500 uppercase tracking-widest font-semibold mb-3">Analysis Result</p>
                 <h2 className={`text-xl font-bold tracking-tight mb-5 ${
                   result.clarityLevel === 'Low' ? 'text-red-700' :
                   result.clarityLevel === 'High' ? 'text-emerald-700' : 'text-amber-700'
@@ -265,23 +267,23 @@ export function ResultsView({ result, onRefine, onNewAnalysis, title }: ResultsV
                 </h2>
                 <div className="flex gap-8 mb-5">
                   <div>
-                    <p className="text-[10px] text-slate-400 uppercase tracking-widest font-medium mb-1">Ambiguity Score</p>
+                    <p className="text-[10px] text-slate-500 uppercase tracking-widest font-medium mb-1">Ambiguity Score</p>
                     <div className="flex items-baseline gap-1">
                       <span className="text-2xl font-bold text-slate-900">{ambiguityScore}</span>
-                      <span className="text-sm text-slate-400">/ 100</span>
+                      <span className="text-sm text-slate-500">/ 100</span>
                     </div>
                   </div>
                   <div>
-                    <p className="text-[10px] text-slate-400 uppercase tracking-widest font-medium mb-1">Rework Probability</p>
+                    <p className="text-[10px] text-slate-500 uppercase tracking-widest font-medium mb-1">Rework Probability</p>
                     <div className="flex items-baseline gap-0.5">
                       <span className={`text-2xl font-bold ${result.clarityLevel === 'Low' ? 'text-red-700' : result.clarityLevel === 'High' ? 'text-emerald-700' : 'text-amber-700'}`}>{reworkProb}</span>
-                      <span className="text-sm text-slate-400">%</span>
+                      <span className="text-sm text-slate-500">%</span>
                     </div>
                   </div>
                 </div>
                 {result.mainIssues?.[0] && (
                   <div>
-                    <p className="text-[10px] text-slate-400 uppercase tracking-widest font-medium mb-1.5">Primary Concern</p>
+                    <p className="text-[10px] text-slate-500 uppercase tracking-widest font-medium mb-1.5">Primary Concern</p>
                     <p className="text-sm text-slate-600 leading-relaxed">{result.mainIssues[0]}</p>
                   </div>
                 )}
@@ -292,7 +294,7 @@ export function ResultsView({ result, onRefine, onNewAnalysis, title }: ResultsV
             {topCriticalRisks.length > 0 && (
               <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden border-t-2 border-t-red-500">
                 <div className="px-6 pt-6 pb-5">
-                  <p className="text-[10px] text-slate-400 uppercase tracking-widest font-semibold mb-3">Top Critical Risks</p>
+                  <p className="text-[10px] text-slate-500 uppercase tracking-widest font-semibold mb-3">Top Critical Risks</p>
                   <h2 className="text-xl font-bold tracking-tight text-red-700 mb-5">High severity found</h2>
                   <div className="space-y-3">
                     {topCriticalRisks.map((risk, idx) => (
@@ -340,7 +342,7 @@ export function ResultsView({ result, onRefine, onNewAnalysis, title }: ResultsV
                 <ul className="space-y-4">
                   {result.nextActions?.map((action: string, idx: number) => (
                     <li key={idx} className="flex items-start gap-3">
-                      <CheckCircle className="w-5 h-5 text-emerald-500 flex-shrink-0 mt-0.5" />
+                      <CheckCircle className="w-5 h-5 text-emerald-500 flex-shrink-0 mt-0.5" aria-hidden="true" />
                       <span className="text-slate-700">{action}</span>
                     </li>
                   ))}
@@ -353,7 +355,7 @@ export function ResultsView({ result, onRefine, onNewAnalysis, title }: ResultsV
         {/* Refine Analysis Section */}
         <div className="mt-16 pt-8 border border-slate-200 print:hidden bg-slate-100 -mx-4 sm:mx-0 p-6 rounded-xl">
           <div className="flex items-center gap-2 mb-2">
-            <Zap className="w-5 h-5 text-amber-500" />
+            <Zap className="w-5 h-5 text-amber-500" aria-hidden="true" />
             <h3 className="text-lg font-bold text-slate-900">Refine Analysis</h3>
           </div>
           <p className="text-sm text-slate-600 mb-6">
@@ -372,7 +374,7 @@ export function ResultsView({ result, onRefine, onNewAnalysis, title }: ResultsV
             </div>
             <div className="flex justify-end">
               <Button onClick={handleRefine} disabled={isRefining || !clarificationNotes.trim()} className="bg-slate-900 hover:bg-slate-800">
-                <RefreshCw className={`w-4 h-4 mr-2 ${isRefining ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`w-4 h-4 mr-2 ${isRefining ? 'animate-spin' : ''}`} aria-hidden="true" />
                 {isRefining ? 'Refining...' : 'Run Refined Analysis'}
               </Button>
             </div>

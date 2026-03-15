@@ -53,20 +53,25 @@ function CustomSelect({ id, value, onChange, placeholder, options }: {
       <button
         type="button"
         id={id}
+        role="combobox"
+        aria-haspopup="listbox"
+        aria-expanded={open}
         onClick={() => setOpen(!open)}
-        className={`h-10 w-full flex items-center justify-between rounded-xl border bg-white px-3 pr-8 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2 ${open ? 'border-slate-950 ring-2 ring-slate-950 ring-offset-2' : 'border-slate-200'} ${value ? 'text-slate-900' : 'text-slate-400'}`}
+        className={`h-10 w-full flex items-center justify-between rounded-xl border bg-white px-3 pr-8 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2 ${open ? 'border-slate-950 ring-2 ring-slate-950 ring-offset-2' : 'border-slate-200'} ${value ? 'text-slate-900' : 'text-slate-500'}`}
       >
         {value || placeholder}
       </button>
-      <ChevronDown className={`absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+      <ChevronDown aria-hidden="true" className={`absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
       {open && (
-        <div className="absolute z-50 mt-1 w-full rounded-xl border border-slate-200 bg-white shadow-md py-1">
+        <div role="listbox" className="absolute z-50 mt-1 w-full rounded-xl border border-slate-200 bg-white shadow-md py-1">
           {options.map(option => (
             <button
               key={option}
               type="button"
+              role="option"
+              aria-selected={value === option}
               onClick={() => { onChange(option); setOpen(false); }}
-              className={`w-full text-left px-3 py-2 text-sm text-slate-900 hover:bg-slate-50 ${value === option ? 'bg-slate-50 font-medium' : ''}`}
+              className={`w-full text-left px-3 py-2 text-sm text-slate-900 hover:bg-slate-50 focus-visible:outline-none focus-visible:bg-slate-100 ${value === option ? 'bg-slate-50 font-medium' : ''}`}
             >
               {option}
             </button>
@@ -106,20 +111,26 @@ function MultiSelect({ id, value, onChange, placeholder, options }: {
       <button
         type="button"
         id={id}
+        role="combobox"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-multiselectable="true"
         onClick={() => setOpen(!open)}
-        className={`h-10 w-full flex items-center justify-between rounded-xl border bg-white px-3 pr-8 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2 ${open ? 'border-slate-950 ring-2 ring-slate-950 ring-offset-2' : 'border-slate-200'} ${value.length > 0 ? 'text-slate-900' : 'text-slate-400'}`}
+        className={`h-10 w-full flex items-center justify-between rounded-xl border bg-white px-3 pr-8 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2 ${open ? 'border-slate-950 ring-2 ring-slate-950 ring-offset-2' : 'border-slate-200'} ${value.length > 0 ? 'text-slate-900' : 'text-slate-500'}`}
       >
         <span className="truncate">{label}</span>
       </button>
-      <ChevronDown className={`absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+      <ChevronDown aria-hidden="true" className={`absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
       {open && (
-        <div className="absolute z-50 mt-1 w-full rounded-xl border border-slate-200 bg-white shadow-md py-1">
+        <div role="listbox" aria-multiselectable="true" className="absolute z-50 mt-1 w-full rounded-xl border border-slate-200 bg-white shadow-md py-1">
           {options.map(option => (
             <button
               key={option}
               type="button"
+              role="option"
+              aria-selected={value.includes(option)}
               onClick={() => toggle(option)}
-              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-900 hover:bg-slate-50"
+              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-900 hover:bg-slate-50 focus-visible:outline-none focus-visible:bg-slate-100"
             >
               <span className={`w-4 h-4 flex-shrink-0 rounded border flex items-center justify-center ${value.includes(option) ? 'bg-slate-900 border-slate-900' : 'border-slate-300'}`}>
                 {value.includes(option) && <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />}
@@ -132,6 +143,26 @@ function MultiSelect({ id, value, onChange, placeholder, options }: {
     </div>
   );
 }
+
+const EXAMPLE_DATA = {
+  title: 'AI UX Issue Prioritization',
+  featureComplexity: 'Multi-step flow',
+  productType: 'B2B SaaS',
+  platform: 'Web',
+  targetUsers: 'Product designers and UX leads in mid-size product teams',
+  designStage: 'Wireframes',
+  focusArea: ['Edge cases', 'User confusion risks'],
+  featureText: `We want to add an AI-powered prioritization engine to our design QA tool. After a designer uploads their Figma screens, the AI scans for UX issues and ranks them by estimated impact on user experience.
+
+The feature works as follows:
+1. Designer uploads screens or pastes a Figma link
+2. AI analyzes the screens and generates a list of UX issues (e.g. unclear CTA, missing empty state, inconsistent spacing)
+3. Each issue gets an impact score (High / Medium / Low) based on heuristics
+4. Designer can review the ranked list, expand each issue for details, and mark issues as resolved or ignored
+5. A summary card shows overall UX health score and top 3 critical issues
+
+The goal is to help designers prioritize which issues to fix before handoff, saving review time and reducing back-and-forth with PMs.`,
+};
 
 export function HomeView({ onRunAnalysis, initialData, onOpenFromHistory }: HomeViewProps) {
   const [title, setTitle] = useState(initialData?.title || '');
@@ -146,6 +177,18 @@ export function HomeView({ onRunAnalysis, initialData, onOpenFromHistory }: Home
   const [isDragging, setIsDragging] = useState(false);
   const [optionalOpen, setOptionalOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleLoadExample = () => {
+    setTitle(EXAMPLE_DATA.title);
+    setFeatureComplexity(EXAMPLE_DATA.featureComplexity);
+    setProductType(EXAMPLE_DATA.productType);
+    setPlatform(EXAMPLE_DATA.platform);
+    setTargetUsers(EXAMPLE_DATA.targetUsers);
+    setDesignStage(EXAMPLE_DATA.designStage);
+    setFocusArea(EXAMPLE_DATA.focusArea);
+    setFeatureText(EXAMPLE_DATA.featureText);
+    setOptionalOpen(true);
+  };
 
   const addFiles = (newFiles: File[]) => {
     setSelectedFiles(prev => {
@@ -223,7 +266,16 @@ export function HomeView({ onRunAnalysis, initialData, onOpenFromHistory }: Home
 
             {/* Step 1 */}
             <div>
-              <span className="block text-base font-semibold text-slate-900 mb-2">Describe the feature you want to review</span>
+              <div className="flex items-center justify-between mb-2">
+                <label htmlFor="featureText" className="text-base font-semibold text-slate-900">Describe the feature you want to review</label>
+                <button
+                  type="button"
+                  onClick={handleLoadExample}
+                  className="text-xs text-slate-500 hover:text-slate-800 border border-slate-200 hover:border-slate-400 rounded-lg px-2.5 py-1 transition-colors"
+                >
+                  Try an example
+                </button>
+              </div>
 
               <div
                 className={`relative rounded-xl border transition-all duration-200 bg-white ${
@@ -260,8 +312,8 @@ export function HomeView({ onRunAnalysis, initialData, onOpenFromHistory }: Home
                         <div key={i} className="flex items-center gap-1.5 px-2 py-1 bg-slate-100 rounded-md">
                           <FileText className="w-3.5 h-3.5 text-slate-500 flex-shrink-0" />
                           <span className="text-xs text-slate-600 truncate max-w-[200px]">{file.name}</span>
-                          <button type="button" onClick={() => removeFile(i)} className="flex-shrink-0 ml-0.5">
-                            <X className="w-3 h-3 text-slate-400 hover:text-slate-600" />
+                          <button type="button" onClick={() => removeFile(i)} aria-label={`Remove ${file.name}`} className="flex-shrink-0 ml-0.5">
+                            <X className="w-3 h-3 text-slate-400 hover:text-slate-600" aria-hidden="true" />
                           </button>
                         </div>
                       ))}
@@ -286,15 +338,17 @@ export function HomeView({ onRunAnalysis, initialData, onOpenFromHistory }: Home
             <div>
               <button
                 type="button"
+                aria-expanded={optionalOpen}
+                aria-controls="optional-context"
                 onClick={() => setOptionalOpen(!optionalOpen)}
                 className="flex items-center gap-2 text-base font-semibold text-slate-900"
               >
-                <ChevronDown className={`w-4 h-4 text-slate-500 transition-transform duration-200 ${optionalOpen ? '' : '-rotate-90'}`} />
+                <ChevronDown aria-hidden="true" className={`w-4 h-4 text-slate-500 transition-transform duration-200 ${optionalOpen ? '' : '-rotate-90'}`} />
                 Context for better analysis
               </button>
 
               {optionalOpen && (
-                <div className="mt-4 space-y-3">
+                <div id="optional-context" className="mt-4 space-y-3">
 
                   <div className="flex flex-col gap-2">
                     <Label htmlFor="title">Feature title</Label>
@@ -442,8 +496,8 @@ function AuthFooter({ onOpenFromHistory }: { onOpenFromHistory?: (result: any, t
                 </span>
               )}
             </div>
-            <button onClick={handleSignOut} className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-slate-600 transition-colors">
-              <LogOut className="w-3.5 h-3.5" />
+            <button onClick={handleSignOut} className="inline-flex items-center gap-1 text-sm text-slate-600 hover:text-slate-900 transition-colors">
+              <LogOut className="w-3.5 h-3.5" aria-hidden="true" />
               Log out
             </button>
           </div>
@@ -458,16 +512,17 @@ function AuthFooter({ onOpenFromHistory }: { onOpenFromHistory?: (result: any, t
                     <p className="text-sm font-medium text-slate-900 truncate">{item.title || 'Untitled Feature'}</p>
                     <div className="flex items-center gap-1 mt-0.5">
                       <Clock className="w-3 h-3 text-slate-400" />
-                      <p className="text-xs text-slate-400">{item.createdAt.toLocaleDateString()}</p>
+                      <p className="text-xs text-slate-500">{item.createdAt.toLocaleDateString()}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-1 flex-shrink-0 ml-3">
                     <div className="relative group/view">
                       <button
                         onClick={() => onOpenFromHistory?.(item.result, item.title)}
+                        aria-label={`View analysis: ${item.title || 'Untitled Feature'}`}
                         className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
                       >
-                        <ExternalLink className="w-4 h-4" />
+                        <ExternalLink className="w-4 h-4" aria-hidden="true" />
                       </button>
                       <span className="pointer-events-none absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-xs text-white opacity-0 group-hover/view:opacity-100 transition-opacity">
                         View
@@ -480,9 +535,10 @@ function AuthFooter({ onOpenFromHistory }: { onOpenFromHistory?: (result: any, t
                           await deleteAnalysis(user.uid, item.id);
                           setAnalyses((prev) => prev.filter((a) => a.id !== item.id));
                         }}
+                        aria-label={`Delete analysis: ${item.title || 'Untitled Feature'}`}
                         className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="w-4 h-4" aria-hidden="true" />
                       </button>
                       <span className="pointer-events-none absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-xs text-white opacity-0 group-hover/del:opacity-100 transition-opacity">
                         Delete
@@ -496,9 +552,9 @@ function AuthFooter({ onOpenFromHistory }: { onOpenFromHistory?: (result: any, t
         </>
       ) : (
         <div className="flex items-baseline justify-center gap-2">
-          <span className="text-sm text-slate-400">Want to save your analysis history?</span>
+          <span className="text-sm text-slate-500">Want to save your analysis history?</span>
           <button onClick={handleSignIn} className="inline-flex items-center gap-1 text-sm text-slate-600 hover:text-slate-900 transition-colors">
-            <LogIn className="w-3.5 h-3.5" />
+            <LogIn className="w-3.5 h-3.5" aria-hidden="true" />
             Log in with Google
           </button>
         </div>
