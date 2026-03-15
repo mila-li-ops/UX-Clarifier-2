@@ -190,7 +190,7 @@ export function ResultsView({ result, onRefine, onNewAnalysis, title }: ResultsV
     <div className="w-full min-h-screen bg-slate-50 pb-24">
       {/* Sticky Anchor Navigation & Summary Panel */}
       <div className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200 shadow-sm print:hidden">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Main row: logo + desktop nav + scores */}
           <div className="flex items-center justify-between h-14 gap-4">
             <div className="flex items-center gap-4 min-w-0 flex-1">
@@ -203,7 +203,6 @@ export function ResultsView({ result, onRefine, onNewAnalysis, title }: ResultsV
                 <span className="font-bold text-slate-700 group-hover:text-slate-900 transition-colors text-sm tracking-tight whitespace-nowrap">UX Clarifier</span>
               </button>
               <div className="hidden md:flex items-center space-x-5 border-l border-slate-200 pl-4 overflow-x-auto">
-                <button onClick={() => scrollTo('summary')} className="text-sm font-medium text-slate-600 hover:text-slate-900 whitespace-nowrap">Summary</button>
                 <button onClick={() => scrollTo('assumptions')} className="text-sm font-medium text-slate-600 hover:text-slate-900 whitespace-nowrap">Assumptions</button>
                 <button onClick={() => scrollTo('risks')} className="text-sm font-medium text-slate-600 hover:text-slate-900 whitespace-nowrap">Risk Scenarios</button>
                 <button onClick={() => scrollTo('ux')} className="text-sm font-medium text-slate-600 hover:text-slate-900 whitespace-nowrap">UX Problems</button>
@@ -221,7 +220,6 @@ export function ResultsView({ result, onRefine, onNewAnalysis, title }: ResultsV
           </div>
           {/* Mobile nav row */}
           <div className="md:hidden flex items-center gap-4 overflow-x-auto pb-2 -mx-4 px-4">
-            <button onClick={() => scrollTo('summary')} className="text-sm font-medium text-slate-600 hover:text-slate-900 whitespace-nowrap">Summary</button>
             <button onClick={() => scrollTo('assumptions')} className="text-sm font-medium text-slate-600 hover:text-slate-900 whitespace-nowrap">Assumptions</button>
             <button onClick={() => scrollTo('risks')} className="text-sm font-medium text-slate-600 hover:text-slate-900 whitespace-nowrap">Risk Scenarios</button>
             <button onClick={() => scrollTo('ux')} className="text-sm font-medium text-slate-600 hover:text-slate-900 whitespace-nowrap">UX Problems</button>
