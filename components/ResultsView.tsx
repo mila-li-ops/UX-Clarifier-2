@@ -14,32 +14,13 @@ interface ResultsViewProps {
   title: string;
 }
 
-// Helper to assign mock severities and likelihoods since the original schema only has severity for predictedUxProblems
-const enrichWithSeverity = (items: string[] = [], defaultSeverity: 'High' | 'Medium' | 'Low' = 'Medium') => {
-  return items.map((item, index) => {
-    // Deterministic pseudo-random severity based on index and length to ensure consistency
-    const hash = item.length + index;
-    let severity = defaultSeverity;
-    let likelihood = 'Medium';
-    
-    if (hash % 3 === 0) severity = 'High';
-    else if (hash % 3 === 1) severity = 'Medium';
-    else severity = 'Low';
-
-    if (hash % 2 === 0) likelihood = 'High';
-    else likelihood = 'Low';
-
-    return {
-      title: item.split('.')[0] || item,
-      description: item,
-      severity,
-      likelihood,
-      whyImplicit: "This assumption is not explicitly stated in the feature description.",
-      consequences: "If false, the feature may fail to meet user needs or cause errors.",
-      clarificationQuestion: "Can we validate this assumption with data or user research?",
-      detectionStage: "Design / Prototyping",
-      mitigation: "Conduct user testing or technical feasibility spikes."
-    };
+// Normalize items from the API — handles both the new rich object format and any legacy string format
+const normalizeItems = (items: any[] = []) => {
+  return items.map((item) => {
+    if (typeof item === 'string') {
+      return { title: item.split('.')[0] || item, description: item, severity: 'Medium', likelihood: 'Medium' };
+    }
+    return item;
   });
 };
 
@@ -57,29 +38,29 @@ const SeverityBadge = ({ severity }: { severity: string }) => {
   );
 };
 
-const ExpandableCard = ({ item, categoryColor }: { item: any, categoryColor: string }) => {
-  const [isExpanded, setIsExpanded] = useState(item.severity === 'High');
+const ExpandableRow = ({ item, categoryColor, isLast }: { item: any, categoryColor: string, isLast: boolean }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
 
   return (
-    <div className={`border border-slate-200 rounded-xl overflow-hidden bg-white transition-all duration-200 hover:border-slate-300 ${isExpanded ? 'shadow-md' : 'shadow-sm'}`}>
-      <div 
-        className={`p-4 cursor-pointer flex items-start gap-4 border-l-4 ${categoryColor}`}
+    <div>
+      <div
+        className="px-4 py-3 cursor-pointer flex items-start gap-3 hover:bg-slate-50 transition-colors"
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between mb-1">
-            <h4 className="text-sm font-semibold text-slate-900 truncate pr-4">{item.title}</h4>
+          <div className="flex items-center justify-between gap-2">
+            <h4 className="text-sm font-semibold text-slate-900">{item.title}</h4>
             <div className="flex items-center gap-2 flex-shrink-0">
               <SeverityBadge severity={item.severity} />
               {isExpanded ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
             </div>
           </div>
-          <p className="text-sm text-slate-600 line-clamp-2">{item.description}</p>
+          {!isExpanded && <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">{item.description}</p>}
         </div>
       </div>
-      
+
       {isExpanded && (
-        <div className="p-4 bg-slate-50 border-t border-slate-100 text-sm space-y-3">
+        <div className="px-4 py-3 bg-slate-50 text-sm space-y-3">
           {item.whyImplicit && (
             <div>
               <span className="font-medium text-slate-900 block mb-0.5">Context / Why it matters:</span>
@@ -117,17 +98,22 @@ const Section = ({ title, items, categoryColor, id }: any) => {
   });
 
   return (
-    <div id={id} className="scroll-mt-24 mb-8">
-      <div className="flex items-center gap-3 pb-2 pt-1">
-        <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
-        <span className="bg-slate-100 text-slate-600 py-0.5 px-2 rounded-full text-xs font-medium">
-          {items.length} items
-        </span>
-      </div>
-
-      <div className="space-y-4">
+    <div id={id} className="scroll-mt-24 mb-4">
+      <div className={`border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm border-l-4 ${categoryColor.replace('border-', 'border-l-')}`}>
+        <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-100 bg-slate-50/60">
+          {(() => {
+            const hasHigh = items.some((i: any) => i.severity === 'High');
+            const hasMedium = items.some((i: any) => i.severity === 'Medium');
+            const dotColor = hasHigh ? 'bg-red-700' : hasMedium ? 'bg-amber-500' : 'bg-emerald-700';
+            return <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${dotColor}`} />;
+          })()}
+          <h3 className="text-base font-semibold text-slate-900">{title}</h3>
+          <span className="bg-slate-200 text-slate-600 py-0.5 px-2 rounded-full text-xs font-medium">
+            {items.length}
+          </span>
+        </div>
         {sortedItems.map((item: any, idx: number) => (
-          <ExpandableCard key={idx} item={item} categoryColor={categoryColor} />
+          <ExpandableRow key={idx} item={item} categoryColor={categoryColor} isLast={idx === sortedItems.length - 1} />
         ))}
       </div>
     </div>
@@ -163,34 +149,34 @@ export function ResultsView({ result, onRefine, onNewAnalysis, title }: ResultsV
   };
 
   // Process data to fit the new UI structure
-  const uxProblems = result.predictedUxProblems?.map((p: any) => ({
-    title: p.problem,
-    description: p.description,
-    severity: p.severity || 'Medium',
-    whyImplicit: "Identified as a potential friction point in the user journey.",
-    detectionStage: "Usability Testing",
-  })) || [];
+  const uxProblems = normalizeItems(
+    result.predictedUxProblems?.map((p: any) =>
+      typeof p === 'string' ? p : { ...p, title: p.title ?? p.problem }
+    )
+  );
 
-  const behavioralAssumptions = enrichWithSeverity(result.implicitAssumptions?.behavioral);
-  const technicalAssumptions = enrichWithSeverity(result.implicitAssumptions?.technical);
-  const businessAssumptions = enrichWithSeverity(result.implicitAssumptions?.business);
-  const uxAssumptions = enrichWithSeverity(result.implicitAssumptions?.ux);
-  
-  const failureStates = enrichWithSeverity(result.systemRiskScenarios?.failureStates);
-  const permissionConflicts = enrichWithSeverity(result.systemRiskScenarios?.permissionConflicts);
-  const emptyDataScenarios = enrichWithSeverity(result.systemRiskScenarios?.emptyDataScenarios);
-  const concurrencyIssues = enrichWithSeverity(result.systemRiskScenarios?.concurrencyIssues);
-  const userMisusePatterns = enrichWithSeverity(result.systemRiskScenarios?.userMisusePatterns);
+  const behavioralAssumptions = normalizeItems(result.implicitAssumptions?.behavioral);
+  const technicalAssumptions = normalizeItems(result.implicitAssumptions?.technical);
+  const uxAssumptions = normalizeItems(result.implicitAssumptions?.ux);
+
+  const failureStates = normalizeItems(result.systemRiskScenarios?.failureStates);
+  const permissionConflicts = normalizeItems(result.systemRiskScenarios?.permissionConflicts);
+  const emptyDataScenarios = normalizeItems(result.systemRiskScenarios?.emptyDataScenarios);
+  const concurrencyIssues = normalizeItems(result.systemRiskScenarios?.concurrencyIssues);
+  const userMisusePatterns = normalizeItems(result.systemRiskScenarios?.userMisusePatterns);
 
   const allRisks = [
     ...uxProblems,
-    ...behavioralAssumptions, ...technicalAssumptions, ...businessAssumptions, ...uxAssumptions,
+    ...behavioralAssumptions, ...technicalAssumptions, ...uxAssumptions,
     ...failureStates, ...permissionConflicts, ...emptyDataScenarios, ...concurrencyIssues, ...userMisusePatterns
   ];
 
   const topCriticalRisks = allRisks
-    .filter(r => r.severity === 'High')
-    .slice(0, 3);
+    .sort((a, b) => {
+      const order: Record<string, number> = { High: 0, Medium: 1, Low: 2 };
+      return (order[a.severity] ?? 3) - (order[b.severity] ?? 3);
+    })
+    .slice(0, 2);
 
   // Mock metrics for the sticky panel
   const ambiguityScore = Math.max(20, 100 - (allRisks.length * 2));
@@ -264,91 +250,88 @@ export function ResultsView({ result, onRefine, onNewAnalysis, title }: ResultsV
         </div>
 
         <div className="print-container">
-          {/* Result Status Card */}
-          <div className={`mb-10 bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden border-t-2 ${
-            result.clarityLevel === 'Low' ? 'border-t-red-500' :
-            result.clarityLevel === 'High' ? 'border-t-emerald-500' : 'border-t-amber-500'
-          }`}>
-            <div className="px-6 pt-6 pb-5">
-              {/* Zone 1: Risk status */}
-              <p className="text-[10px] text-slate-400 uppercase tracking-widest font-semibold mb-3">Analysis Result</p>
-              <h2 className={`text-2xl font-bold tracking-tight mb-5 ${
-                result.clarityLevel === 'Low' ? 'text-red-700' :
-                result.clarityLevel === 'High' ? 'text-emerald-700' : 'text-amber-700'
-              }`}>
-                {result.clarityLevel || (ambiguityScore < 50 ? 'Low' : ambiguityScore < 80 ? 'Moderate' : 'High')} clarity risk
-              </h2>
-
-              {/* Zone 2: Metrics */}
-              <div className="flex gap-8 mb-5">
-                <div>
-                  <p className="text-[10px] text-slate-400 uppercase tracking-widest font-medium mb-1">Ambiguity Score</p>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-2xl font-bold text-slate-900">{ambiguityScore}</span>
-                    <span className="text-sm text-slate-400">/ 100</span>
+          {/* Result Status Card + Top Critical Risks side by side */}
+          <div className="mb-10 grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
+            {/* Analysis Result */}
+            <div className={`bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden border-t-2 ${
+              result.clarityLevel === 'Low' ? 'border-t-red-500' :
+              result.clarityLevel === 'High' ? 'border-t-emerald-500' : 'border-t-amber-500'
+            }`}>
+              <div className="px-6 pt-6 pb-5">
+                <p className="text-[10px] text-slate-400 uppercase tracking-widest font-semibold mb-3">Analysis Result</p>
+                <h2 className={`text-xl font-bold tracking-tight mb-5 ${
+                  result.clarityLevel === 'Low' ? 'text-red-700' :
+                  result.clarityLevel === 'High' ? 'text-emerald-700' : 'text-amber-700'
+                }`}>
+                  {result.clarityLevel || (ambiguityScore < 50 ? 'Low' : ambiguityScore < 80 ? 'Moderate' : 'High')} clarity risk
+                </h2>
+                <div className="flex gap-8 mb-5">
+                  <div>
+                    <p className="text-[10px] text-slate-400 uppercase tracking-widest font-medium mb-1">Ambiguity Score</p>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-2xl font-bold text-slate-900">{ambiguityScore}</span>
+                      <span className="text-sm text-slate-400">/ 100</span>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-slate-400 uppercase tracking-widest font-medium mb-1">Rework Probability</p>
+                    <div className="flex items-baseline gap-0.5">
+                      <span className={`text-2xl font-bold ${result.clarityLevel === 'Low' ? 'text-red-700' : result.clarityLevel === 'High' ? 'text-emerald-700' : 'text-amber-700'}`}>{reworkProb}</span>
+                      <span className="text-sm text-slate-400">%</span>
+                    </div>
                   </div>
                 </div>
-                <div>
-                  <p className="text-[10px] text-slate-400 uppercase tracking-widest font-medium mb-1">Rework Probability</p>
-                  <div className="flex items-baseline gap-0.5">
-                    <span className={`text-2xl font-bold ${reworkProb > 50 ? 'text-red-600' : reworkProb > 20 ? 'text-amber-600' : 'text-emerald-600'}`}>{reworkProb}</span>
-                    <span className="text-sm text-slate-400">%</span>
+                {result.mainIssues?.[0] && (
+                  <div>
+                    <p className="text-[10px] text-slate-400 uppercase tracking-widest font-medium mb-1.5">Primary Concern</p>
+                    <p className="text-sm text-slate-600 leading-relaxed">{result.mainIssues[0]}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Top Critical Risks */}
+            {topCriticalRisks.length > 0 && (
+              <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden border-t-2 border-t-red-500">
+                <div className="px-6 pt-6 pb-5">
+                  <p className="text-[10px] text-slate-400 uppercase tracking-widest font-semibold mb-3">Top Critical Risks</p>
+                  <h2 className="text-xl font-bold tracking-tight text-red-700 mb-5">High severity found</h2>
+                  <div className="space-y-3">
+                    {topCriticalRisks.map((risk, idx) => (
+                      <div key={idx} className="flex items-center gap-3 bg-red-50/50 p-3 rounded-xl border border-red-100">
+                        <SeverityBadge severity="High" />
+                        <p className="text-sm text-slate-800 font-medium leading-snug">{risk.title}</p>
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>
-
-              {/* Zone 3: Main issue */}
-              {result.mainIssues?.[0] && (
-                <div>
-                  <p className="text-[10px] text-slate-400 uppercase tracking-widest font-medium mb-1.5">Primary Concern</p>
-                  <p className="text-sm text-slate-600 leading-relaxed">{result.mainIssues[0]}</p>
-                </div>
-              )}
-            </div>
+            )}
           </div>
-
-          {/* Top Critical Risks Block */}
-          {topCriticalRisks.length > 0 && (
-            <div className="mb-10 bg-red-50/50 border border-red-100 rounded-xl p-6">
-              <div className="flex items-center gap-2 mb-4">
-                <ShieldAlert className="w-5 h-5 text-red-600" />
-                <h2 className="text-lg font-bold text-red-900">Top Critical Risks</h2>
-              </div>
-              <div className="space-y-3">
-                {topCriticalRisks.map((risk, idx) => (
-                  <div key={idx} className="flex items-center gap-3 bg-white p-3 rounded-xl border border-red-100 shadow-sm">
-                    <SeverityBadge severity="High" />
-                    <p className="text-sm text-slate-800 font-medium leading-snug">{risk.title}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
 
 
           {/* Implicit Assumptions */}
           <div id="assumptions" className="scroll-mt-24 mb-12">
             <h2 className="text-2xl font-bold text-slate-900 mb-6 pb-3 border-b border-slate-200">Implicit Assumptions</h2>
-            <Section title="Behavioral Assumptions" icon={Info} items={behavioralAssumptions} categoryColor="border-blue-500" defaultExpanded={true} />
-            <Section title="Technical Assumptions" icon={Info} items={technicalAssumptions} categoryColor="border-indigo-500" />
-            <Section title="Business Assumptions" icon={Info} items={businessAssumptions} categoryColor="border-violet-500" />
-            <Section title="UX Assumptions" icon={Info} items={uxAssumptions} categoryColor="border-fuchsia-500" />
+            <Section title="Behavioral Assumptions" items={behavioralAssumptions} categoryColor="border-blue-500" />
+            <Section title="Technical Assumptions" items={technicalAssumptions} categoryColor="border-blue-500" />
+            <Section title="UX Assumptions" items={uxAssumptions} categoryColor="border-blue-500" />
           </div>
 
           {/* System Risk Scenarios */}
           <div id="risks" className="scroll-mt-24 mb-12">
             <h2 className="text-2xl font-bold text-slate-900 mb-6 pb-3 border-b border-slate-200">System Risk Scenarios</h2>
-            <Section title="Failure States" icon={AlertTriangle} items={failureStates} categoryColor="border-amber-500" defaultExpanded={true} />
-            <Section title="Permission Conflicts" icon={AlertTriangle} items={permissionConflicts} categoryColor="border-orange-500" />
-            <Section title="Empty Data Scenarios" icon={AlertTriangle} items={emptyDataScenarios} categoryColor="border-yellow-500" />
-            <Section title="Concurrency Issues" icon={AlertTriangle} items={concurrencyIssues} categoryColor="border-rose-500" />
-            <Section title="User Misuse Patterns" icon={AlertTriangle} items={userMisusePatterns} categoryColor="border-red-500" />
+            <Section title="Failure States" items={failureStates} categoryColor="border-amber-500" />
+            <Section title="Permission Conflicts" items={permissionConflicts} categoryColor="border-amber-500" />
+            <Section title="Empty Data Scenarios" items={emptyDataScenarios} categoryColor="border-amber-500" />
+            <Section title="Concurrency Issues" items={concurrencyIssues} categoryColor="border-amber-500" />
+            <Section title="User Misuse Patterns" items={userMisusePatterns} categoryColor="border-amber-500" />
           </div>
 
           {/* Predicted UX Problems */}
           <div id="ux" className="scroll-mt-24 mb-12">
             <h2 className="text-2xl font-bold text-slate-900 mb-6 pb-3 border-b border-slate-200">Predicted UX Problems</h2>
-            <Section title="Usability Friction" icon={Target} items={uxProblems} categoryColor="border-pink-500" defaultExpanded={true} />
+            <Section title="Usability Friction" items={uxProblems} categoryColor="border-pink-500" />
           </div>
 
           {/* Next Actions */}
