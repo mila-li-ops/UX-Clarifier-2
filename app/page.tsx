@@ -122,9 +122,31 @@ export default function Page() {
     runAnalysis(data);
   };
 
-  const handleRefine = (clarificationNotes: string) => {
-    if (featureData) {
+  const handleRefine = async (clarificationNotes: string, files: File[]) => {
+    if (!featureData) return;
+    if (files.length === 0) {
       runAnalysis(featureData, clarificationNotes);
+      return;
+    }
+    setAppState('PROCESSING');
+    setIsExtracting(true);
+    try {
+      const parts: string[] = [];
+      if (extractedText) parts.push(extractedText);
+      else if (featureData.featureText.trim()) parts.push(featureData.featureText);
+      for (const file of files) {
+        const text = await extractFile(file);
+        parts.push(`--- Extracted from: ${file.name} ---\n${text}`);
+      }
+      const combined = parts.join('\n\n');
+      setExtractedText(combined);
+      setIsExtracting(false);
+      runAnalysis({ ...featureData, featureText: combined, files: [] }, clarificationNotes);
+    } catch (err: any) {
+      setExtractionError(true);
+      setError(err);
+      setAppState('ERROR');
+      setIsExtracting(false);
     }
   };
 

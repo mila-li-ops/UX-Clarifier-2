@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
-import { Download, RefreshCw, PlusCircle, AlertTriangle, CheckCircle, Info, ChevronDown, ChevronUp, ShieldAlert, Target, Activity, Zap, Sparkles } from 'lucide-react';
+import { Download, RefreshCw, PlusCircle, AlertTriangle, CheckCircle, Info, ChevronDown, ChevronUp, ShieldAlert, Target, Activity, Zap, Sparkles, Paperclip, X, FileText } from 'lucide-react';
 import { Textarea } from './ui/textarea';
 import { Label } from './ui/label';
 
@@ -51,7 +51,7 @@ const Tooltip = ({ content, children, side = 'top' }: { content: string; childre
 
 interface ResultsViewProps {
   result: any;
-  onRefine: (clarificationNotes: string) => void;
+  onRefine: (clarificationNotes: string, files: File[]) => void;
   onNewAnalysis: () => void;
   title: string;
 }
@@ -194,6 +194,18 @@ const Section = ({ title, items, categoryColor, id, activeId }: any) => {
 export function ResultsView({ result, onRefine, onNewAnalysis, title }: ResultsViewProps) {
   const [clarificationNotes, setClarificationNotes] = useState('');
   const [isRefining, setIsRefining] = useState(false);
+  const [refineFiles, setRefineFiles] = useState<File[]>([]);
+  const refineFileInputRef = useRef<HTMLInputElement>(null);
+
+  const ACCEPTED_TYPES = ['image/png','image/jpeg','image/webp','image/gif','application/pdf'];
+
+  const handleRefineFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []).filter(f => ACCEPTED_TYPES.includes(f.type));
+    setRefineFiles(prev => [...prev, ...files]);
+    e.target.value = '';
+  };
+
+  const removeRefineFile = (idx: number) => setRefineFiles(prev => prev.filter((_, i) => i !== idx));
   const [currentDate, setCurrentDate] = useState<string>('');
   const [activeRiskId, setActiveRiskId] = useState<string | null>(null);
 
@@ -218,12 +230,12 @@ export function ResultsView({ result, onRefine, onNewAnalysis, title }: ResultsV
   };
 
   const handleRefine = () => {
-    if (!clarificationNotes.trim()) {
-      alert("Please enter clarification notes before refining.");
+    if (!clarificationNotes.trim() && refineFiles.length === 0) {
+      alert("Please enter clarification notes or attach a file before refining.");
       return;
     }
     setIsRefining(true);
-    onRefine(clarificationNotes);
+    onRefine(clarificationNotes, refineFiles);
   };
 
   // Process data to fit the new UI structure
@@ -440,9 +452,7 @@ export function ResultsView({ result, onRefine, onNewAnalysis, title }: ResultsV
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-slate-800 leading-relaxed">{action}</p>
                       {linkedRisk && (
-                        <p className="mt-1.5 text-xs text-slate-400 flex items-center gap-1.5">
-                          <span className="inline-block w-1 h-1 rounded-full bg-slate-300 flex-shrink-0" aria-hidden="true" />
-                          Addresses:{' '}
+                        <p className="mt-1 text-xs flex items-center">
                           <button
                             type="button"
                             onClick={() => navigateToRisk(linkedRisk)}
@@ -469,19 +479,54 @@ export function ResultsView({ result, onRefine, onNewAnalysis, title }: ResultsV
           <p className="text-sm text-slate-600 mb-6">
             Add clarification notes to address the assumptions or risks above, and run the analysis again to see if the clarity improves.
           </p>
-          <div className="space-y-4 w-full">
-            <div className="space-y-2">
+          <div className="space-y-3 w-full">
+            <div>
               <Label htmlFor="clarificationNotes" className="sr-only">Clarification Notes</Label>
-              <Textarea 
-                id="clarificationNotes" 
-                placeholder="e.g., The user will always be authenticated before reaching this flow. The empty state will show a generic illustration." 
-                className="min-h-[120px] resize-none overflow-hidden bg-white border-slate-300 focus:border-slate-400 focus:ring-slate-400"
+              <Textarea
+                id="clarificationNotes"
+                placeholder="e.g., The user will always be authenticated before reaching this flow. The empty state will show a generic illustration."
+                className="min-h-[100px] resize-none overflow-hidden bg-white border-slate-300 focus:border-slate-400 focus:ring-slate-400"
                 value={clarificationNotes}
                 onChange={handleNotesChange}
               />
             </div>
-            <div className="flex justify-end">
-              <Button onClick={handleRefine} disabled={isRefining || !clarificationNotes.trim()} className="bg-slate-900 hover:bg-slate-800">
+            {refineFiles.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {refineFiles.map((file, idx) => (
+                  <div key={idx} className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-700">
+                    <FileText className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" aria-hidden="true" />
+                    <span className="max-w-[160px] truncate">{file.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => removeRefineFile(idx)}
+                      aria-label={`Remove ${file.name}`}
+                      className="ml-0.5 text-slate-400 hover:text-slate-600"
+                    >
+                      <X className="w-3 h-3" aria-hidden="true" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => refineFileInputRef.current?.click()}
+                className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-700 transition-colors"
+              >
+                <Paperclip className="w-3.5 h-3.5" aria-hidden="true" />
+                Attach files
+              </button>
+              <input
+                ref={refineFileInputRef}
+                type="file"
+                multiple
+                accept="image/png,image/jpeg,image/webp,image/gif,application/pdf"
+                onChange={handleRefineFileChange}
+                className="hidden"
+                aria-label="Attach files for refinement"
+              />
+              <Button onClick={handleRefine} disabled={isRefining || (!clarificationNotes.trim() && refineFiles.length === 0)} className="bg-slate-900 hover:bg-slate-800">
                 <RefreshCw className={`w-4 h-4 mr-2 ${isRefining ? 'animate-spin' : ''}`} aria-hidden="true" />
                 {isRefining ? 'Refining...' : 'Run Refined Analysis'}
               </Button>
